@@ -16,12 +16,12 @@ import scipy.sparse as sp
 from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
 from scipy.sparse import csr_matrix
-from ..neighbors import NearestNeighbors
 from ..base import BaseEstimator
 from ..utils import check_array
 from ..utils import check_random_state
 from ..decomposition import PCA
 from ..metrics.pairwise import pairwise_distances
+from ..neighbors import NearestNeighbors
 from . import _utils
 from . import _barnes_hut_tsne
 from ..externals.six import string_types
@@ -436,17 +436,26 @@ def trustworthiness(X, X_embedded, n_neighbors=5,
                       "0.20 and will be removed in 0.22. See 'metric' "
                       "parameter instead.", DeprecationWarning)
         metric = 'precomputed'
-    dist_X = pairwise_distances(X, metric=metric)
-    dist_X_embedded = pairwise_distances(X_embedded, squared=True)
-    ind_X = np.argsort(dist_X, axis=1)
-    ind_X_embedded = np.argsort(dist_X_embedded, axis=1)[:, 1:n_neighbors + 1]
-
     n_samples = X.shape[0]
+    nn_struct_input = NearestNeighbors(n_neighbors=n_samples - 1,
+                                       metric=metric)
+    nn_struct_output = NearestNeighbors(n_neighbors=n_neighbors)
+    nn_struct_input.fit(X)
+    nn_struct_output.fit(X_embedded)
+    nn_output = nn_struct_output.kneighbors(return_distance=False)
+    nn_input = nn_struct_input.kneighbors(return_distance=False)
+
+    # we invert the index for looking up neighbors quickly in the input space
+    nn_input_inv = np.zeros((n_samples, n_samples))
+    for i in range(n_samples):
+        for j in range(n_samples - 1):
+            nn_input_inv[i, nn_input[i, j]] = j + 1
+
     t = 0.0
     ranks = np.zeros(n_neighbors)
     for i in range(n_samples):
         for j in range(n_neighbors):
-            ranks[j] = np.where(ind_X[i] == ind_X_embedded[i, j])[0][0]
+            ranks[j] = nn_input_inv[i, nn_output[i, j]]
         ranks -= n_neighbors
         t += np.sum(ranks[ranks > 0])
     t = 1.0 - t * (2.0 / (n_samples * n_neighbors *
