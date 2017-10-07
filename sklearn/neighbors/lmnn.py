@@ -580,7 +580,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
         if self.verbose:
             t_grad_static = time.time() - t_grad_static
-            print('[{}] Computed static part of the gradient in {:5.2f}.'
+            print('[{}] Computed static part of the gradient in {:5.2f}s.'
                   .format(self.__class__.__name__, t_grad_static))
 
         return grad_targets
