@@ -35,8 +35,9 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         If None it is inferred from ``init``.
 
     init : string or numpy array, optional (default='pca')
-        Initialization of linear transformation. Possible options are 'pca',
-        'identity' and a numpy array of shape (n_features_out, n_features).
+        Initialization of the linear transformation.
+        Possible options are 'pca', 'identity' and a numpy array of shape
+        (n_features_out, n_features).
 
     warm_start : bool, optional, (default=False)
         If True and :meth:`fit` has been called before, the solution of the
@@ -46,25 +47,30 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
     n_neighbors : int, optional (default=3)
         Number of neighbors to use as target neighbors for each sample.
 
-    neighbors_algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
-        Algorithm used to compute the target neighbors, passed to
-        neighbors.NearestNeighbors instance
+    targets_algorithm : str {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
+        Algorithm used to compute the target neighbors, passed to a
+        :class:`neighbors.NearestNeighbors` instance.
 
     max_impostors : int, optional (default=500000)
         Maximum number of impostors to consider per iteration. In the worst
         case this will result in ``max_impostors * n_neighbors`` constraints.
 
-    imp_store : {'auto', 'list', 'sparse'}, optional
-        Data structure used to store the impostors:
+    imp_store : str {'auto', 'list', 'sparse'}, optional
+        list :
+            Three lists will be used to store the indices of reference
+            samples, the indices of their impostors and the distances between
+            the (sample, impostor) pairs.
 
-        - 'list' will use 3 lists to store the indices of samples,
-           their impostors and the distance between them.
-        - 'sparse' will use a sparse indicator matrix to store the (sample,
-          impostor) pairs. The distances to the impostors will be computed
-          twice, but this option tends to be more efficient than 'list' as the
-          data set size increases.
-        - 'auto' will attempt to decide the most appropriate approach
-          based on the values passed to :meth:`fit`.
+        sparse :
+            A sparse indicator matrix will be used to store the (sample,
+            impostor) pairs. The distances to the impostors will be computed
+            twice (once to determine the impostors and once to be stored),
+            but this option tends to be faster than 'list' as the size of
+            the data set increases.
+
+        auto :
+            Will attempt to decide the most appropriate choice of data
+            structure based on the values passed to :meth:`fit`.
 
     max_iter : int, optional (default=50)
         Maximum number of iterations in the optimization.
@@ -74,19 +80,20 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     callback : callable, optional (default=None)
         If not None, this function is called after every iteration of the
-        optimizer taking as arguments the current solution and the number of
-        iterations. This might be useful in case one wants to examine or store
-        the transformation found after each iteration.
+        optimizer, taking as arguments the current solution (transformation)
+        and the number of iterations. This might be useful in case one wants
+        to examine or store the transformation found after each iteration.
 
     store_opt_result : bool, optional (default=False)
-        If True, the OptimizeResult object returned by :meth:`minimize` of
-        scipy.optimize will be stored in the attribute ``opt_result_``.
+        If True, the :class:`scipy.optimize.OptimizeResult` object returned by
+        :meth:`minimize` of `scipy.optimize` will be stored as attribute
+        ``opt_result_``.
 
     verbose : int, optional (default=0)
         If 0, no progress messages will be printed.
         If 1, progress messages will be printed to stdout.
         If > 1, progress messages will be printed and the ``iprint``
-        parameter of :meth:`_minimize_lbfgsb` of scipy.optimize will be set
+        parameter of :meth:`_minimize_lbfgsb` of `scipy.optimize` will be set
         to ``verbose - 2``.
 
     random_state : int or numpy.RandomState or None, optional (default=None)
@@ -113,9 +120,9 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
     n_iter_ : int
         Counts the number of iterations performed by the optimizer.
 
-    opt_result_ : OptimizeResult (optional)
-        If ``store_opt_result`` is True, this will be a dictionary of
-        information representing the optimization result.
+    opt_result_ : scipy.optimize.OptimizeResult (optional)
+        A dictionary of information representing the optimization result.
+        This is stored only if ``store_opt_result`` was True.
 
     Examples
     --------
@@ -157,17 +164,17 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     .. warning::
 
-        At least for 32bit systems, one cannot expect precise reproducibility
-        of PCA and therefore the transformations in 2 identical runs can
-        diverge even before the first iteration of LargeMarginNearestNeighbor.
-        Therefore, one should not expect any reproducibility of the
-        transformations found by `LargeMarginNearestNeighbor` when
-        initialization with PCA is used (``init``='pca').
+        Exact floating-point reproducibility is generally not guaranteed (
+        unless special care is taken with library and compiler options). As
+        a consequence, the transformations computed in 2 identical runs of
+        LargeMarginNearestNeighbor can differ from each other even before the
+        optimizer is called if initialization with PCA is used (init='pca').
 
     References
     ----------
-    .. [1] Weinberger, Kilian Q., and Lawrence K. Saul. "Distance Metric
-    Learning for Large Margin Nearest Neighbor Classification."
+    .. [1] Weinberger, Kilian Q., and Lawrence K. Saul.
+    "Distance Metric Learning for Large Margin Nearest Neighbor
+    Classification."
     Journal of Machine Learning Research, Vol. 10, Feb. 2009, pp. 207-244.
     (http://jmlr.csail.mit.edu/papers/volume10/weinberger09a/weinberger09a.pdf)
 
@@ -177,7 +184,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, n_features_out=None, init='pca', warm_start=False,
-                 n_neighbors=3, neighbors_algorithm='auto',
+                 n_neighbors=3, targets_algorithm='auto',
                  max_impostors=500000, imp_store='auto', max_iter=50,
                  tol=1e-5, callback=None, store_opt_result=False, verbose=0,
                  random_state=None, n_jobs=1):
@@ -187,7 +194,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         self.init = init
         self.warm_start = warm_start
         self.n_neighbors = n_neighbors
-        self.neighbors_algorithm = neighbors_algorithm
+        self.targets_algorithm = targets_algorithm
         self.max_impostors = max_impostors
         self.imp_store = imp_store
         self.max_iter = max_iter
@@ -232,13 +239,12 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         transformation = self._initialize(X_valid, init)
 
         # Find the target neighbors
-        targets = _select_target_neighbors(X_valid, y_valid, self.n_neighbors_,
-                                           verbose=self.verbose,
-                                           n_jobs=self.n_jobs,
-                                           algorithm=self.neighbors_algorithm)
+        targets = self._select_target_neighbors(
+            X_valid, y_valid, self.n_neighbors_, n_jobs=self.n_jobs,
+            algorithm=self.targets_algorithm)
 
         # Compute the gradient part contributed by the target neighbors
-        grad_static = _compute_grad_static(X_valid, targets, self.verbose)
+        grad_static = self._compute_grad_static(X_valid, targets)
 
         # Decide how to store the impostors
         if self.imp_store == 'sparse':
@@ -493,12 +499,15 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
                       random_state=self.random_state_)
             t_pca = time.time()
             if self.verbose:
-                print('Finding principal components... ', end='')
+                print('[{}] Finding principal components...'.format(
+                    self.__class__.__name__))
                 sys.stdout.flush()
 
             pca.fit(X)
             if self.verbose:
-                print('done in {:5.2f}s.'.format(time.time() - t_pca))
+                t_pca = time.time() - t_pca
+                print('[{}] Found principal components in {:5.2f}s.'.format(
+                    self.__class__.__name__, t_pca))
 
             transformation = pca.components_
 
@@ -509,6 +518,72 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
                 transformation = np.eye(self.n_features_out, X.shape[1])
 
         return transformation
+
+    def _select_target_neighbors(self, X, y, n_targets, **kwargs):
+        """Find the target neighbors of each data sample.
+
+        Parameters
+        ----------
+        X : array, shape (n_samples, n_features)
+            The training samples.
+
+        y : array, shape (n_samples,)
+            The corresponding training labels indices.
+
+        n_targets : int
+            The number of target neighbors to select for each sample in X.
+
+        Returns
+        -------
+        target_neighbors: array, shape (n_samples, n_targets)
+            An array of neighbors indices for each sample.
+        """
+
+        t_targets = time.time()
+        if self.verbose:
+            print('[{}] Finding the target neighbors...'.format(
+                self.__class__.__name__))
+            sys.stdout.flush()
+
+        target_neighbors = _select_target_neighbors(X, y, n_targets, **kwargs)
+
+        if self.verbose:
+            t_targets = time.time() - t_targets
+            print('[{}] Found the target neighbors in {:5.2f}s.'.format(
+                self.__class__.__name__, t_targets))
+
+        return target_neighbors
+
+    def _compute_grad_static(self, X, targets):
+        """Compute the gradient contributed by the target neighbors.
+
+        Parameters
+        ----------
+        X : array, shape (n_samples, n_features)
+            The training samples.
+
+        targets : array, shape (n_samples, n_targets)
+            The k nearest neighbors of each sample from the same class.
+
+        Returns
+        -------
+        grad_targets, shape (n_features, n_features)
+            An array with the sum of all outer products of samples-targets.
+        """
+
+        t_grad_static = time.time()
+        if self.verbose:
+            print('[{}] Computing static part of the gradient...'.format(
+                self.__class__.__name__))
+
+        grad_targets = _compute_grad_static(X, targets)
+
+        if self.verbose:
+            t_grad_static = time.time() - t_grad_static
+            print('[{}] Computed static part of the gradient in {:5.2f}.'
+                  .format(self.__class__.__name__, t_grad_static))
+
+        return grad_targets
 
     def _callback(self, transformation):
         """Called after each iteration of the optimizer.
@@ -538,7 +613,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         y : array, shape (n_samples,)
             The corresponding training labels.
 
-        targets : array, shape (n_samples, n_neighbors)
+        targets : array, shape (n_samples, n_targets)
             The target neighbors of each sample.
 
         grad_static : array, shape (n_features, n_features)
@@ -574,9 +649,9 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         X_embedded = self._transform_without_checks(X)
 
         # Compute squared distances to the target neighbors
-        n_neighbors = targets.shape[1]
-        dist_tn = np.zeros((n_samples, n_neighbors))
-        for k in range(n_neighbors):
+        n_targets = targets.shape[1]
+        dist_tn = np.zeros((n_samples, n_targets))
+        for k in range(n_targets):
             dist_tn[:, k] = row_norms(X_embedded - X_embedded[targets[:, k]],
                                       squared=True)
 
@@ -619,7 +694,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
             The corresponding (possibly encoded) class labels.
 
         margin_radii : array, shape (n_samples,)
-            Distances to the farthest target neighbors + margin.
+            (Squared) distances to the farthest target neighbors + margin.
 
         use_sparse : bool, optional (default=True)
             Whether to use a sparse matrix to store the pairs.
@@ -729,7 +804,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 #########################
 
 
-def _select_target_neighbors(X, y, n_neighbors, verbose=0, **kwargs):
+def _select_target_neighbors(X, y, n_targets, **kwargs):
     """Find the target neighbors of each data sample.
 
     Parameters
@@ -740,26 +815,18 @@ def _select_target_neighbors(X, y, n_neighbors, verbose=0, **kwargs):
     y : array, shape (n_samples,)
         The corresponding training labels indices.
 
-    n_neighbors : int
+    n_targets : int
         The number of target neighbors to select for each sample in X.
-
-    verbose : int, optional (default=0)
-        Whether to print progress info.
 
     Returns
     -------
-    target_neighbors: array, shape (n_samples, n_neighbors)
+    target_neighbors: array, shape (n_samples, n_targets)
         An array of neighbors indices for each sample.
     """
 
-    t_targets = time.time()
-    if verbose:
-        print('Finding the target neighbors... ', end='')
-        sys.stdout.flush()
+    target_neighbors = np.zeros((X.shape[0], n_targets), dtype=int)
 
-    target_neighbors = np.zeros((X.shape[0], n_neighbors), dtype=int)
-
-    nn = NearestNeighbors(n_neighbors=n_neighbors, **kwargs)
+    nn = NearestNeighbors(n_neighbors=n_targets, **kwargs)
 
     classes = np.unique(y)
     for class_id in classes:
@@ -768,13 +835,10 @@ def _select_target_neighbors(X, y, n_neighbors, verbose=0, **kwargs):
         neigh_ind = nn.kneighbors(return_distance=False)
         target_neighbors[ind_class] = ind_class[neigh_ind]
 
-    if verbose:
-        print('done in {:5.2f}s.'.format(time.time() - t_targets))
-
     return target_neighbors
 
 
-def _compute_grad_static(X, targets, verbose=0):
+def _compute_grad_static(X, targets):
     """Compute the gradient contributed by the target neighbors.
 
     Parameters
@@ -782,11 +846,8 @@ def _compute_grad_static(X, targets, verbose=0):
     X : array, shape (n_samples, n_features)
         The training samples.
 
-    targets : array, shape (n_samples, n_neighbors)
+    targets : array, shape (n_samples, n_targets)
         The k nearest neighbors of each sample from the same class.
-
-    verbose : int, optional (default=0)
-        Whether to print progress info.
 
     Returns
     -------
@@ -794,18 +855,12 @@ def _compute_grad_static(X, targets, verbose=0):
         An array with the sum of all outer products of samples-targets.
     """
 
-    if verbose:
-        print('Computing static part of the gradient... ', end='')
-
-    n_samples, n_neighbors = targets.shape
-    row = np.repeat(range(n_samples), n_neighbors)
+    n_samples, n_targets = targets.shape
+    row = np.repeat(range(n_samples), n_targets)
     col = targets.ravel()
     targets_sparse = csr_matrix((np.ones(targets.size), (row, col)),
                                 shape=(n_samples, n_samples))
     grad_targets = _sum_weighted_outer_differences(X, targets_sparse)
-
-    if verbose:
-        print('done.')
 
     return grad_targets
 
@@ -941,10 +996,10 @@ def _compute_push_loss(X, targets, dist_targets, impostors_graph):
     X : array, shape (n_samples, n_features)
         The training input samples.
 
-    targets : array, shape (n_samples, n_neighbors)
+    targets : array, shape (n_samples, n_targets)
         Indices of target neighbors of each sample.
 
-    dist_targets : array, shape (n_samples, n_neighbors)
+    dist_targets : array, shape (n_samples, n_targets)
         Distances of samples to their target neighbors.
 
     impostors_graph : coo_matrix, shape (n_samples, n_samples)
@@ -964,7 +1019,7 @@ def _compute_push_loss(X, targets, dist_targets, impostors_graph):
 
     """
 
-    n_samples, n_neighbors = dist_targets.shape
+    n_samples, n_targets = dist_targets.shape
     imp_row = impostors_graph.row
     imp_col = impostors_graph.col
     dist_impostors = impostors_graph.data
@@ -974,7 +1029,7 @@ def _compute_push_loss(X, targets, dist_targets, impostors_graph):
     A0 = csr_matrix(shape)
     sample_range = range(n_samples)
     n_active_triplets = 0
-    for k in range(n_neighbors-1, -1, -1):
+    for k in range(n_targets-1, -1, -1):
         loss1 = np.maximum(dist_targets[imp_row, k] - dist_impostors, 0)
         ac, = np.where(loss1 > 0)
         n_active_triplets += len(ac)

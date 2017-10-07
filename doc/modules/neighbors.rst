@@ -518,7 +518,6 @@ the model from 0.81 to 0.82.
 
 .. _lmnn:
 
-=============================
 Large Margin Nearest Neighbor
 =============================
 
@@ -560,7 +559,7 @@ The plot shows decision boundaries for nearest neighbor classification and large
 
 
 Dimensionality reduction
-========================
+------------------------
 
 :class:`LargeMarginNearestNeighbor` can be used to perform supervised dimensionality reduction. The input data are projected onto a linear subspace consisting of the directions which minimize the LMNN objective. The desired dimensionality can be set using the parameter ``n_features_out``.
 For instance, the following shows a comparison of dimensionality reduction with :class:`PCA`, :class:`LinearDiscriminantAnalysis` and :class:`LargeMarginNearestNeighbor` on the Olivetti dataset, a dataset with size :math:`n_{samples} = 400` and :math:`n_{features} = 64 \times 64 = 4096`. The data set is splitted in a training and test set of equal size. For evaluation the 3-nearest neighbor classification accuracy is computed on the 2-dimensional embedding found by each method. Each data sample belongs to one of 40 classes.
@@ -581,7 +580,7 @@ For instance, the following shows a comparison of dimensionality reduction with 
 
 
 Mathematical formulation
-========================
+------------------------
 
 LMNN learns a linear transformation matrix :math:`L` of size ``(n_features_out, n_features)``.
 The objective function consists of two competing terms, the pull loss that pulls target neighbors closer to their reference sample and the push loss that pushes impostors away:
@@ -611,7 +610,7 @@ To use this model for classification, one can simply fit a nearest neighbors cla
 
 
 Mahalanobis distance
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 LMNN can be seen as learning a (squared) Mahalanobis distance metric:
 
@@ -620,11 +619,11 @@ LMNN can be seen as learning a (squared) Mahalanobis distance metric:
     || L(x_i - x_j)||^2 = (x_i - x_j)^TM(x_i - x_j),
 
 where :math:`M = L^T L` is a symmetric positive semi-definite matrix of size ``(n_features, n_features)``. The objective function of LMNN can be rewritten and solved with respect to :math:`M` directly. This results in a convex but constrained problem (since :math:`M` must be symmetric positive semi-definite).
-See [#1]_ for more details.
+See the journal paper in the References for more details.
 
 
 Implementation
-==============
+--------------
 
 This implementation follows closely the MATLAB implementation found at https://bitbucket.org/mlcircus/lmnn which solves the unconstrained problem. It finds a linear transformation :math:`L` by optimization with L-BFGS instead of solving the constrained problem that finds the globally optimal distance metric. Different from the paper, the problem solved by this implementation is with the *squared* hinge loss (to make the problem differentiable). The parameter :math:`\mu` is fixed to :math:`0.5`.
 
@@ -638,10 +637,10 @@ See the examples below and the doc string of :meth:`LargeMarginNearestNeighbor.f
 
 .. topic:: References:
 
-   * [#1] | `"Distance Metric Learning for Large Margin Nearest Neighbor Classification"
-            <http://jmlr.csail.mit.edu/papers/volume10/weinberger09a/weinberger09a.pdf>`_,
-          | Weinberger, Kilian Q., and Lawrence K. Saul, Journal of Machine Learning Research, Vol. 10, Feb. 2009, pp. 207-244.
+   * | `"Distance Metric Learning for Large Margin Nearest Neighbor Classification"
+       <http://jmlr.csail.mit.edu/papers/volume10/weinberger09a/weinberger09a.pdf>`_,
+     | Weinberger, Kilian Q., and Lawrence K. Saul, Journal of Machine Learning Research, Vol. 10, Feb. 2009, pp. 207-244.
 
-   * [#2] `Wikipedia entry on Large Margin Nearest Neighbor
-          <https://en.wikipedia.org/wiki/Large_margin_nearest_neighbor>`_
+   * `Wikipedia entry on Large Margin Nearest Neighbor
+     <https://en.wikipedia.org/wiki/Large_margin_nearest_neighbor>`_
 
