@@ -30,26 +30,26 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     Parameters
     ----------
-    n_features_out : int, optional (default=None)
-        Preferred dimensionality of the embedding.
-        If None it is inferred from ``init``.
-
-    init : string or numpy array, optional (default='pca')
-        Initialization of the linear transformation.
-        Possible options are 'pca', 'identity' and a numpy array of shape
-        (n_features_out, n_features).
-
-    warm_start : bool, optional, (default=False)
-        If True and :meth:`fit` has been called before, the solution of the
-        previous call to :meth:`fit` is used as the initial linear
-        transformation (``init`` is ignored).
-
     n_neighbors : int, optional (default=3)
         Number of neighbors to use as target neighbors for each sample.
 
     targets_algorithm : str {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
         Algorithm used to compute the target neighbors, passed to a
         :class:`neighbors.NearestNeighbors` instance.
+
+    init : string or numpy array, optional (default='pca')
+        Initialization of the linear transformation.
+        Possible options are 'pca', 'identity' and a numpy array of shape
+        (n_features_out, n_features).
+
+    n_features_out : int, optional (default=None)
+        Preferred dimensionality of the embedding.
+        If None it is inferred from ``init``.
+
+    warm_start : bool, optional, (default=False)
+        If True and :meth:`fit` has been called before, the solution of the
+        previous call to :meth:`fit` is used as the initial linear
+        transformation (``init`` is ignored).
 
     max_impostors : int, optional (default=500000)
         Maximum number of impostors to consider per iteration. In the worst
@@ -183,11 +183,11 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, n_features_out=None, init='pca', warm_start=False,
-                 n_neighbors=3, targets_algorithm='auto',
-                 max_impostors=500000, imp_store='auto', max_iter=50,
-                 tol=1e-5, callback=None, store_opt_result=False, verbose=0,
-                 random_state=None, n_jobs=1):
+    def __init__(self, n_neighbors=3, targets_algorithm='auto', init='pca',
+                 n_features_out=None, warm_start=False, max_impostors=500000,
+                 imp_store='auto', max_iter=50, tol=1e-5, callback=None,
+                 store_opt_result=False, verbose=0, random_state=None,
+                 n_jobs=1):
 
         # Parameters
         self.n_features_out = n_features_out
@@ -680,11 +680,8 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         if self.verbose:
             t_funcall = time.time() - t_funcall
             values_fmt = '[{}] {:>10} {:>20.6e} {:>20,} {:>10.2f}'
-            print(values_fmt.format(self.__class__.__name__,
-                                    self.n_iter_,
-                                    loss,
-                                    n_active_triplets,
-                                    t_funcall))
+            print(values_fmt.format(self.__class__.__name__, self.n_iter_,
+                                    loss, n_active_triplets, t_funcall))
             sys.stdout.flush()
 
         return loss, grad.ravel()
@@ -701,10 +698,12 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
             The corresponding (possibly encoded) class labels.
 
         margin_radii : array, shape (n_samples,)
-            (Squared) distances to the farthest target neighbors + margin.
+            (Squared) distances of samples to their farthest target
+            neighbors plus margin.
 
         use_sparse : bool, optional (default=True)
-            Whether to use a sparse matrix to store the pairs.
+            Whether to use a sparse matrix to store the (sample, impostor)
+            pairs.
 
         Returns
         -------
