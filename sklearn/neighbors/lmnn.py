@@ -643,9 +643,12 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
                                  '#Active Triplets', 'Time(s)']
                 header_fmt = '{:>10} {:>20} {:>20} {:>10}'
                 header = header_fmt.format(*header_fields)
-                print('\n{}\n{}'.format(header, '-' * len(header)))
+                cls_name = self.__class__.__name__
+                print('[{}]'.format(cls_name))
+                print('[{}] {}\n[{}] {}'.format(cls_name, header,
+                                                cls_name, '-' * len(header)))
 
-        t_start = time.time()
+        t_funcall = time.time()
         X_embedded = self._transform_without_checks(X)
 
         # Compute squared distances to the target neighbors
@@ -674,10 +677,14 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         metric = np.dot(transformation.T, transformation)
         loss += np.dot(grad_static.ravel(), metric.ravel())
 
-        t = time.time() - t_start
         if self.verbose:
-            values_fmt = '{:>10} {:>20.6e} {:>20,} {:>10.2f}'
-            print(values_fmt.format(self.n_iter_, loss, n_active_triplets, t))
+            t_funcall = time.time() - t_funcall
+            values_fmt = '[{}] {:>10} {:>20.6e} {:>20,} {:>10.2f}'
+            print(values_fmt.format(self.__class__.__name__,
+                                    self.n_iter_,
+                                    loss,
+                                    n_active_triplets,
+                                    t_funcall))
             sys.stdout.flush()
 
         return loss, grad.ravel()
