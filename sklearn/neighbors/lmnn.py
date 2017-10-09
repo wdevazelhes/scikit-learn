@@ -33,18 +33,28 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
     n_neighbors : int, optional (default=3)
         Number of neighbors to use as target neighbors for each sample.
 
-    targets_algorithm : str {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
-        Algorithm used to compute the target neighbors, passed to a
-        :class:`neighbors.NearestNeighbors` instance.
-
-    init : string or numpy array, optional (default='pca')
-        Initialization of the linear transformation.
-        Possible options are 'pca', 'identity' and a numpy array of shape
-        (n_features_out, n_features).
-
     n_features_out : int, optional (default=None)
         Preferred dimensionality of the embedding.
         If None it is inferred from ``init``.
+
+    init : string or numpy array, optional (default='pca')
+        Initialization of the linear transformation. Possible options are
+        'pca', 'identity' and a numpy array of shape (n_features_out,
+        n_features).
+
+        pca:
+            ``n_features_out`` many principal components of the inputs
+            passed to :meth:`fit` will be used.
+
+        identity:
+            If ``n_features_out`` is strictly smaller than the
+            dimensionality of the inputs passed to :meth:`fit`, the identity
+            matrix will be truncated to the first ``n_features_out`` rows.
+
+        numpy array:
+            n_features must match the dimensionality of the inputs passed to
+            :meth:`fit` and n_features_out must be less than or equal to that.
+            If ``n_features_out`` is not None, it must match n_features_out.
 
     warm_start : bool, optional, (default=False)
         If True and :meth:`fit` has been called before, the solution of the
@@ -55,7 +65,11 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         Maximum number of impostors to consider per iteration. In the worst
         case this will result in ``max_impostors * n_neighbors`` constraints.
 
-    imp_store : str {'auto', 'list', 'sparse'}, optional
+    targets_algorithm : str {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
+        Algorithm used to compute the target neighbors, passed to a
+        :class:`neighbors.NearestNeighbors` instance.
+
+    impostor_store : str {'auto', 'list', 'sparse'}, optional
         list :
             Three lists will be used to store the indices of reference
             samples, the indices of their impostors and the distances between
@@ -167,36 +181,38 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         Exact floating-point reproducibility is generally not guaranteed (
         unless special care is taken with library and compiler options). As
         a consequence, the transformations computed in 2 identical runs of
-        LargeMarginNearestNeighbor can differ from each other even before the
-        optimizer is called if initialization with PCA is used (init='pca').
+        LargeMarginNearestNeighbor can differ from each other. This can
+        happen even before the optimizer is called if initialization with
+        PCA is used (init='pca').
 
     References
     ----------
     .. [1] Weinberger, Kilian Q., and Lawrence K. Saul.
-    "Distance Metric Learning for Large Margin Nearest Neighbor
-    Classification."
-    Journal of Machine Learning Research, Vol. 10, Feb. 2009, pp. 207-244.
-    (http://jmlr.csail.mit.edu/papers/volume10/weinberger09a/weinberger09a.pdf)
+           "Distance Metric Learning for Large Margin Nearest Neighbor
+           Classification."
+           Journal of Machine Learning Research, Vol. 10, Feb. 2009,
+           pp. 207-244.
+           http://jmlr.csail.mit.edu/papers/volume10/weinberger09a/weinberger09a.pdf
 
     .. [2] Wikipedia entry on Large Margin Nearest Neighbor
-    (https://en.wikipedia.org/wiki/Large_margin_nearest_neighbor)
+           https://en.wikipedia.org/wiki/Large_margin_nearest_neighbor
 
     """
 
-    def __init__(self, n_neighbors=3, targets_algorithm='auto', init='pca',
-                 n_features_out=None, warm_start=False, max_impostors=500000,
-                 imp_store='auto', max_iter=50, tol=1e-5, callback=None,
-                 store_opt_result=False, verbose=0, random_state=None,
-                 n_jobs=1):
+    def __init__(self, n_neighbors=3, n_features_out=None, init='pca',
+                 warm_start=False, max_impostors=500000,
+                 targets_algorithm='auto', impostor_store='auto', max_iter=50,
+                 tol=1e-5, callback=None, store_opt_result=False, verbose=0,
+                 random_state=None, n_jobs=1):
 
         # Parameters
+        self.n_neighbors = n_neighbors
         self.n_features_out = n_features_out
         self.init = init
         self.warm_start = warm_start
-        self.n_neighbors = n_neighbors
-        self.targets_algorithm = targets_algorithm
         self.max_impostors = max_impostors
-        self.imp_store = imp_store
+        self.targets_algorithm = targets_algorithm
+        self.impostor_store = impostor_store
         self.max_iter = max_iter
         self.tol = tol
         self.callback = callback
@@ -239,17 +255,17 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         transformation = self._initialize(X_valid, init)
 
         # Find the target neighbors
-        targets = self._select_target_neighbors(
+        target_neighbors = self._select_target_neighbors(
             X_valid, y_valid, self.n_neighbors_, n_jobs=self.n_jobs,
             algorithm=self.targets_algorithm)
 
         # Compute the gradient part contributed by the target neighbors
-        grad_static = self._compute_grad_static(X_valid, targets)
+        grad_static = self._compute_grad_static(X_valid, target_neighbors)
 
         # Decide how to store the impostors
-        if self.imp_store == 'sparse':
+        if self.impostor_store == 'sparse':
             use_sparse = True
-        elif self.imp_store == 'list':
+        elif self.impostor_store == 'list':
             use_sparse = False
         else:
             # auto: Use a heuristic based on the data set size
@@ -260,8 +276,8 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         optimizer_params = {'method': 'L-BFGS-B',
                             'fun': self._loss_grad_lbfgs,
                             'jac': True,
-                            'args': (X_valid, y_valid, targets, grad_static,
-                                     use_sparse),
+                            'args': (X_valid, y_valid, target_neighbors,
+                                     grad_static, use_sparse),
                             'x0': transformation,
                             'tol': self.tol,
                             'options': dict(maxiter=self.max_iter, disp=disp),
@@ -411,12 +427,13 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         _check_scalar(self.max_iter, 'max_iter', int, 1)
         _check_scalar(self.tol, 'tol', float, 0.)
         _check_scalar(self.max_impostors, 'max_impostors', int, 1)
-        _check_scalar(self.imp_store, 'imp_store', str)
+        _check_scalar(self.impostor_store, 'impostor_store', str)
         _check_scalar(self.n_jobs, 'n_jobs', int)
         _check_scalar(self.verbose, 'verbose', int, 0)
 
-        if self.imp_store not in ['auto', 'sparse', 'list']:
-            raise ValueError("`imp_store` must be 'auto', 'sparse' or 'list'.")
+        if self.impostor_store not in ['auto', 'sparse', 'list']:
+            raise ValueError("`impostor_store` must be 'auto', 'sparse' or "
+                             "'list'.")
 
         if self.callback is not None:
             if not callable(self.callback):
@@ -519,7 +536,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
         return transformation
 
-    def _select_target_neighbors(self, X, y, n_targets, **kwargs):
+    def _select_target_neighbors(self, X, y, n_targets, **nn_kwargs):
         """Find the target neighbors of each data sample.
 
         Parameters
@@ -533,6 +550,16 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         n_targets : int
             The number of target neighbors to select for each sample in X.
 
+        **nn_kwargs : keyword arguments
+            Passed to a :class:`neighbors.NearestNeighbors` instance.
+
+        :Keyword Arguments:
+            algorithm : str
+                Algorithm used to find nearest neighbors within each class.
+
+            n_jobs : int
+                Number of jobs used to compute nearest neighbors.
+
         Returns
         -------
         target_neighbors: array, shape (n_samples, n_targets)
@@ -545,7 +572,8 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
                 self.__class__.__name__))
             sys.stdout.flush()
 
-        target_neighbors = _select_target_neighbors(X, y, n_targets, **kwargs)
+        target_neighbors = _select_target_neighbors(X, y, n_targets,
+                                                    **nn_kwargs)
 
         if self.verbose:
             t_targets = time.time() - t_targets
@@ -576,7 +604,12 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
             print('[{}] Computing static part of the gradient...'.format(
                 self.__class__.__name__))
 
-        grad_targets = _compute_grad_static(X, targets)
+        n_samples, n_targets = targets.shape
+        row = np.repeat(range(n_samples), n_targets)
+        col = targets.ravel()
+        targets_sparse = csr_matrix((np.ones(targets.size), (row, col)),
+                                    shape=(n_samples, n_samples))
+        grad_targets = _sum_weighted_outer_differences(X, targets_sparse)
 
         if self.verbose:
             t_grad_static = time.time() - t_grad_static
@@ -810,7 +843,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 #########################
 
 
-def _select_target_neighbors(X, y, n_targets, **kwargs):
+def _select_target_neighbors(X, y, n_targets, **nn_kwargs):
     """Find the target neighbors of each data sample.
 
     Parameters
@@ -824,15 +857,25 @@ def _select_target_neighbors(X, y, n_targets, **kwargs):
     n_targets : int
         The number of target neighbors to select for each sample in X.
 
+    **nn_kwargs : keyword arguments
+        Passed to a :class:`neighbors.NearestNeighbors` instance.
+
+    :Keyword Arguments:
+        algorithm : str
+            Algorithm used to find nearest neighbors within each class.
+
+        n_jobs : int
+            Number of jobs used to compute nearest neighbors.
+
     Returns
     -------
     target_neighbors: array, shape (n_samples, n_targets)
-        An array of neighbors indices for each sample.
+        The indices of the target neighbors of each sample.
     """
 
     target_neighbors = np.zeros((X.shape[0], n_targets), dtype=int)
 
-    nn = NearestNeighbors(n_neighbors=n_targets, **kwargs)
+    nn = NearestNeighbors(n_neighbors=n_targets, **nn_kwargs)
 
     classes = np.unique(y)
     for class_id in classes:
@@ -842,33 +885,6 @@ def _select_target_neighbors(X, y, n_targets, **kwargs):
         target_neighbors[ind_class] = ind_class[neigh_ind]
 
     return target_neighbors
-
-
-def _compute_grad_static(X, targets):
-    """Compute the gradient contributed by the target neighbors.
-
-    Parameters
-    ----------
-    X : array, shape (n_samples, n_features)
-        The training samples.
-
-    targets : array, shape (n_samples, n_targets)
-        The k nearest neighbors of each sample from the same class.
-
-    Returns
-    -------
-    grad_targets, shape (n_features, n_features)
-        An array with the sum of all outer products of samples-targets.
-    """
-
-    n_samples, n_targets = targets.shape
-    row = np.repeat(range(n_samples), n_targets)
-    col = targets.ravel()
-    targets_sparse = csr_matrix((np.ones(targets.size), (row, col)),
-                                shape=(n_samples, n_samples))
-    grad_targets = _sum_weighted_outer_differences(X, targets_sparse)
-
-    return grad_targets
 
 
 def _find_impostors_blockwise(X_a, X_b, radii_a, radii_b,

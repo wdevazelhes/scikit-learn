@@ -89,7 +89,7 @@ def test_params_validation():
     assert_raises(TypeError, LMNN(n_features_out='invalid').fit, X, y)
     assert_raises(TypeError, LMNN(n_jobs='yes').fit, X, y)
     assert_raises(TypeError, LMNN(warm_start=1).fit, X, y)
-    assert_raises(TypeError, LMNN(imp_store=0.5).fit, X, y)
+    assert_raises(TypeError, LMNN(impostor_store=0.5).fit, X, y)
 
     # ValueError
     assert_raises(ValueError, LMNN(init=1).fit, X, y)
@@ -199,11 +199,11 @@ def test_init_transformation():
 
 def test_max_impostors():
     lmnn = LargeMarginNearestNeighbor(n_neighbors=3, max_impostors=1,
-                                      imp_store='list')
+                                      impostor_store='list')
     lmnn.fit(iris_data, iris_target)
 
     lmnn = LargeMarginNearestNeighbor(n_neighbors=3, max_impostors=1,
-                                      imp_store='sparse')
+                                      impostor_store='sparse')
     lmnn.fit(iris_data, iris_target)
 
 
@@ -217,18 +217,18 @@ def test_imp_store():
     X_train, y_train, X_test, y_test = X[train], y[train], X[test], y[test]
 
     k = 3
-    lmnn = LargeMarginNearestNeighbor(n_neighbors=k, imp_store='list')
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=k, impostor_store='list')
     lmnn.fit(X_train, y_train)
     knn = KNeighborsClassifier(n_neighbors=k)
     knn.fit(lmnn.fit_transform(X_train, y_train), y_train)
     acc_sparse = knn.score(lmnn.transform(X_test), y_test)
 
-    lmnn = LargeMarginNearestNeighbor(n_neighbors=k, imp_store='sparse')
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=k, impostor_store='sparse')
     lmnn.fit(X_train, y_train)
     knn.fit(lmnn.fit_transform(X_train, y_train), y_train)
     acc_dense = knn.score(lmnn.transform(X_test), y_test)
 
-    err_msg = 'Toggling `imp_store` results in different accuracy.'
+    err_msg = 'Toggling `impostor_store` results in different accuracy.'
     assert_equal(acc_dense, acc_sparse, msg=err_msg)
 
 
