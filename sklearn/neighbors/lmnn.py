@@ -39,12 +39,12 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     init : string or numpy array, optional (default='pca')
         Initialization of the linear transformation. Possible options are
-        'pca', 'identity' and a numpy array of shape (n_features_out,
-        n_features).
+        'pca', 'identity' and a numpy array of shape (n_features_a,
+        n_features_b).
 
         pca:
-            ``n_features_out`` many principal components of the inputs
-            passed to :meth:`fit` will be used.
+            ``n_features_out`` many principal components of the inputs passed
+            to :meth:`fit` will be used to initialize the transformation.
 
         identity:
             If ``n_features_out`` is strictly smaller than the
@@ -52,14 +52,14 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
             matrix will be truncated to the first ``n_features_out`` rows.
 
         numpy array:
-            n_features must match the dimensionality of the inputs passed to
-            :meth:`fit` and n_features_out must be less than or equal to that.
-            If ``n_features_out`` is not None, it must match n_features_out.
+            n_features_b must match the dimensionality of the inputs passed to
+            :meth:`fit` and n_features_a must be less than or equal to that.
+            If ``n_features_out`` is not None, n_features_a must match it.
 
     warm_start : bool, optional, (default=False)
         If True and :meth:`fit` has been called before, the solution of the
         previous call to :meth:`fit` is used as the initial linear
-        transformation (``init`` is ignored).
+        transformation (``n_features_out`` and ``init`` will be ignored).
 
     max_impostors : int, optional (default=500000)
         Maximum number of impostors to consider per iteration. In the worst
@@ -363,7 +363,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
             The validated training labels, encoded to be integers in
             the range(0, n_classes).
 
-        init : string or numpy array
+        init : string or numpy array of shape (n_features_a, n_features_b)
             The validated initialization of the linear transformation.
 
         Raises
@@ -494,7 +494,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         X : array, shape (n_samples, n_features)
             The training samples.
 
-        init : string or numpy array
+        init : string or numpy array of shape (n_features_a, n_features)
             The initialization of the linear transformation.
 
         Returns

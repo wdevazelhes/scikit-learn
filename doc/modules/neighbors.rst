@@ -540,6 +540,9 @@ Large Margin Nearest Neighbor (LMNN, :class:`LargeMarginNearestNeighbor`) is a d
 
 For each training sample, the algorithm fixes :math:`k` "target neighbors", namely the :math:`k`-nearest training samples (as measured by the Euclidean distance) that share the same label. Given these target neighbors, LMNN learns a linear transformation of the data by optimizing a trade-off between two goals. The first one is to make each (transformed) point closer to its target neighbors than to any differently-labeled point by a large margin, thereby enclosing the target neighbors in a sphere around the reference sample. Data samples from different classes that violate this margin are called "impostors". The second goal is to minimize the distances of each sample to its target neighbors, which can be seen as some sort of regularization.
 
+Classification
+--------------
+
 Combined with a nearest neighbors classifier (:class:`KNeighborsClassifier`), this method is attractive for classification because it can naturally handle multi-class problems without any increase in the model size, and only a single parameter (``n_neighbors``) has to be selected by the user before training.
 
 Large Margin Nearest Neighbor classification has been shown to work well in practice for data sets of varying size and difficulty. In contrast to related methods such as LDA, LMNN does not make any assumptions about the class distributions. The nearest neighbor classification can naturally produce highly irregular decision boundaries.
@@ -639,7 +642,8 @@ See the examples below and the doc string of :meth:`LargeMarginNearestNeighbor.f
 
    * | `"Distance Metric Learning for Large Margin Nearest Neighbor Classification"
        <http://jmlr.csail.mit.edu/papers/volume10/weinberger09a/weinberger09a.pdf>`_,
-     | Weinberger, Kilian Q., and Lawrence K. Saul, Journal of Machine Learning Research, Vol. 10, Feb. 2009, pp. 207-244.
+     | Weinberger, Kilian Q., and Lawrence K. Saul, Journal of Machine Learning Research,
+     | Vol. 10, Feb. 2009, pp. 207-244.
 
    * `Wikipedia entry on Large Margin Nearest Neighbor
      <https://en.wikipedia.org/wiki/Large_margin_nearest_neighbor>`_
