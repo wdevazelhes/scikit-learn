@@ -206,7 +206,7 @@ def test_init_transformation():
     lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init=init)
     assert_raises(ValueError, lmnn.fit, X_train, y_train)
 
-    # init.shape[0] must be <= init.shape[0]
+    # init.shape[0] must be <= init.shape[1]
     init = np.random.rand(X.shape[1] + 1, X.shape[1])
     lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init=init)
     assert_raises(ValueError, lmnn.fit, X_train, y_train)

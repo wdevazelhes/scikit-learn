@@ -563,9 +563,9 @@ training.
 
 Large Margin Nearest Neighbor classification has been shown to work well in
 practice for data sets of varying size and difficulty. In contrast to
-related methods such as LDA, LMNN does not make any assumptions about the
-class distributions. The nearest neighbor classification can naturally
-produce highly irregular decision boundaries.
+related methods such as Linear Discriminant Analysis, LMNN does not make any
+assumptions about the class distributions. The nearest neighbor classification
+can naturally produce highly irregular decision boundaries.
 
 To use this model for classification, one can simply fit a nearest neighbors
 classifier (:class:`KNeighborsClassifier`) on the data after transforming

@@ -120,7 +120,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     Attributes
     ----------
-    transformation_ : array, shape (n_features_out, n_features).
+    transformation_ : array, shape (n_features_out, n_features)
         The linear transformation learned during fitting.
 
     n_neighbors_ : int
@@ -1128,11 +1128,12 @@ def _check_scalar(x, name, dtype, min_val=None, max_val=None):
         If the parameter's value violates the given bounds.
     """
 
-    if type(x) is not dtype:
-        raise TypeError('`{}` must be {}.'.format(name, dtype))
+    x_type = type(x)
+    if x_type is not dtype:
+        raise TypeError('`{}` must be {}, not {}.'.format(name, dtype, x_type))
 
     if min_val is not None and x < min_val:
-        raise ValueError('`{}` must be >= {}.'.format(name, min_val))
+        raise ValueError('`{}`= {}, must be >= {}.'.format(name, x, min_val))
 
     if max_val is not None and x > max_val:
-        raise ValueError('`{}` must be <= {}.'.format(name, max_val))
+        raise ValueError('`{}`= {}, must be <= {}.'.format(name, x, max_val))
