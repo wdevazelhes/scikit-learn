@@ -186,15 +186,36 @@ def test_init_transformation():
                                         n_redundant=0, random_state=0)
     X_train, X_test, y_train, y_test = train_test_split(X, y)
 
+    # Start learning from scratch
     lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init='identity')
     lmnn.fit(X_train, y_train)
-    n_iter_no_pca = lmnn.n_iter_
 
-    lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init='pca')
+    # Initialize with PCA
+    lmnn_pca = LargeMarginNearestNeighbor(n_neighbors=3, init='pca')
+    lmnn_pca.fit(X_train, y_train)
+
+    # Not always True
+    # assert_true(lmnn_pca.n_iter_ <= lmnn.n_iter_)
+
+    init = np.random.rand(X.shape[1], X.shape[1])
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init=init)
     lmnn.fit(X_train, y_train)
-    n_iter_pca = lmnn.n_iter_
 
-    assert_true(n_iter_pca <= n_iter_no_pca)
+    # init.shape[1] must match X.shape[1]
+    init = np.random.rand(X.shape[1], X.shape[1] + 1)
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init=init)
+    assert_raises(ValueError, lmnn.fit, X_train, y_train)
+
+    # init.shape[0] must be <= init.shape[0]
+    init = np.random.rand(X.shape[1] + 1, X.shape[1])
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init=init)
+    assert_raises(ValueError, lmnn.fit, X_train, y_train)
+
+    # init.shape[0] must match n_features_out
+    init = np.random.rand(X.shape[1], X.shape[1])
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=3, init=init,
+                                      n_features_out=X.shape[1] - 2)
+    assert_raises(ValueError, lmnn.fit, X_train, y_train)
 
 
 def test_max_impostors():
@@ -207,7 +228,7 @@ def test_max_impostors():
     lmnn.fit(iris_data, iris_target)
 
 
-def test_imp_store():
+def test_impostor_store():
     X = iris_data
     y = iris_target
     n_samples, n_features = X.shape
