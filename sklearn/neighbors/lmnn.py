@@ -842,9 +842,9 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         return impostors_graph
 
 
-##########################
-# Some helper functions #
-#########################
+########################
+# Some core functions #
+#######################
 
 
 def _select_target_neighbors(X, y, n_targets, **nn_kwargs):
@@ -968,6 +968,72 @@ def _find_impostors_blockwise(X_a, X_b, radii_a, radii_b,
         return imp_indices
 
 
+def _compute_push_loss(X, targets, dist_targets, impostors_graph):
+    """
+
+    Parameters
+    ----------
+    X : array, shape (n_samples, n_features)
+        The training input samples.
+
+    targets : array, shape (n_samples, n_targets)
+        Indices of target neighbors of each sample.
+
+    dist_targets : array, shape (n_samples, n_targets)
+        Distances of samples to their target neighbors.
+
+    impostors_graph : coo_matrix, shape (n_samples, n_samples)
+        Element (i, j) is the distance between sample i and j if j is an
+        impostor to i, otherwise zero.
+
+    Returns
+    -------
+    loss : float
+        The push loss caused by the given targets and impostors.
+
+    grad : array, shape (n_features, n_features)
+        The gradient of the push loss.
+
+    n_active_triplets : int
+        The number of active triplet constraints.
+
+    """
+
+    n_samples, n_targets = dist_targets.shape
+    imp_row = impostors_graph.row
+    imp_col = impostors_graph.col
+    dist_impostors = impostors_graph.data
+
+    loss = 0
+    shape = (n_samples, n_samples)
+    A0 = csr_matrix(shape)
+    sample_range = range(n_samples)
+    n_active_triplets = 0
+    for k in range(n_targets - 1, -1, -1):
+        loss1 = np.maximum(dist_targets[imp_row, k] - dist_impostors, 0)
+        ac, = np.where(loss1 > 0)
+        n_active_triplets += len(ac)
+        A1 = csr_matrix((2 * loss1[ac], (imp_row[ac], imp_col[ac])), shape)
+
+        loss2 = np.maximum(dist_targets[imp_col, k] - dist_impostors, 0)
+        ac, = np.where(loss2 > 0)
+        n_active_triplets += len(ac)
+        A2 = csc_matrix((2 * loss2[ac], (imp_row[ac], imp_col[ac])), shape)
+
+        values = (A1.sum(1).ravel() + A2.sum(0)).getA1()
+        A3 = csr_matrix((values, (sample_range, targets[:, k])), shape)
+        A0 = A0 - A1 - A2 + A3
+        loss += np.dot(loss1, loss1) + np.dot(loss2, loss2)
+
+    grad = _sum_weighted_outer_differences(X, A0)
+
+    return loss, grad, n_active_triplets
+
+
+##########################
+# Some helper functions #
+#########################
+
 def _euclidean_distances_without_checks(X, Y=None, Y_norm_squared=None,
                                         squared=False, X_norm_squared=None,
                                         clip=True):
@@ -1067,68 +1133,6 @@ def _paired_distances_blockwise(X, ind_a, ind_b, squared=True, block_size=8):
         np.sqrt(distances, distances)
 
     return distances
-
-
-def _compute_push_loss(X, targets, dist_targets, impostors_graph):
-    """
-
-    Parameters
-    ----------
-    X : array, shape (n_samples, n_features)
-        The training input samples.
-
-    targets : array, shape (n_samples, n_targets)
-        Indices of target neighbors of each sample.
-
-    dist_targets : array, shape (n_samples, n_targets)
-        Distances of samples to their target neighbors.
-
-    impostors_graph : coo_matrix, shape (n_samples, n_samples)
-        Element (i, j) is the distance between sample i and j if j is an
-        impostor to i, otherwise zero.
-
-    Returns
-    -------
-    loss : float
-        The push loss caused by the given targets and impostors.
-
-    grad : array, shape (n_features, n_features)
-        The gradient of the push loss.
-
-    n_active_triplets : int
-        The number of active triplet constraints.
-
-    """
-
-    n_samples, n_targets = dist_targets.shape
-    imp_row = impostors_graph.row
-    imp_col = impostors_graph.col
-    dist_impostors = impostors_graph.data
-
-    loss = 0
-    shape = (n_samples, n_samples)
-    A0 = csr_matrix(shape)
-    sample_range = range(n_samples)
-    n_active_triplets = 0
-    for k in range(n_targets-1, -1, -1):
-        loss1 = np.maximum(dist_targets[imp_row, k] - dist_impostors, 0)
-        ac, = np.where(loss1 > 0)
-        n_active_triplets += len(ac)
-        A1 = csr_matrix((2*loss1[ac], (imp_row[ac], imp_col[ac])), shape)
-
-        loss2 = np.maximum(dist_targets[imp_col, k] - dist_impostors, 0)
-        ac, = np.where(loss2 > 0)
-        n_active_triplets += len(ac)
-        A2 = csc_matrix((2*loss2[ac], (imp_row[ac], imp_col[ac])), shape)
-
-        values = (A1.sum(1).ravel() + A2.sum(0)).getA1()
-        A3 = csr_matrix((values, (sample_range, targets[:, k])), shape)
-        A0 = A0 - A1 - A2 + A3
-        loss += np.dot(loss1, loss1) + np.dot(loss2, loss2)
-
-    grad = _sum_weighted_outer_differences(X, A0)
-
-    return loss, grad, n_active_triplets
 
 
 def _sum_weighted_outer_differences(X, weights):
