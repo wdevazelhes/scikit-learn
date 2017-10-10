@@ -7,7 +7,6 @@ Large Margin Nearest Neighbor Classification
 # License: BSD 3 clause
 
 from __future__ import print_function
-from builtins import int
 from warnings import warn
 
 import sys
@@ -936,17 +935,11 @@ def _find_impostors_blockwise(X_a, X_b, radii_a, radii_b,
     # X_b squared norm stays constant, so pre-compute it to get a speed-up
     X_b_norm_squared = row_norms(X_b, squared=True)[np.newaxis, :]
     for chunk in gen_batches(n_samples_a, block_n_rows):
-        # from sklearn.metrics.pairwise import euclidean_distances
-        # distances_ab = euclidean_distances(X_a[chunk], X_b, squared=True,
-        #                                    Y_norm_squared=X_b_norm_squared)
-        # check_input in every chunk would add an extra ~8% time of computation
-
-        X_a_chunk = X_a[chunk]
-        X_a_norm_squared = row_norms(X_a_chunk, squared=True)[:, np.newaxis]
-        distances_ab = safe_sparse_dot(X_a_chunk, X_b.T, dense_output=True)
-        distances_ab *= -2
-        distances_ab += X_a_norm_squared
-        distances_ab += X_b_norm_squared
+        # sklearn.metrics.pairwise.euclidean_distances function would add an
+        # extra ~8% time of computation due to input validation
+        distances_ab = _euclidean_distances_without_checks(
+            X_a[chunk], X_b, squared=True, Y_norm_squared=X_b_norm_squared,
+            clip=False)
 
         ind_b, = np.where((distances_ab < radii_a[chunk, None]).ravel())
         ind_a, = np.where((distances_ab < radii_b[None, :]).ravel())
@@ -957,9 +950,10 @@ def _find_impostors_blockwise(X_a, X_b, radii_a, radii_b,
             imp_indices.extend(ind_plus_offset)
 
             if return_distance:
-                # This np.maximum would add another ~8% time of computation
-                # np.maximum(distances_ab, 0, out=distances_ab)
+                # We only need the clipping here because we return the
+                # distances. This adds another ~8% time of computation
                 distances_chunk = distances_ab.ravel()[ind]
+                # Clip only the indexed (unique) distances
                 np.maximum(distances_chunk, 0, out=distances_chunk)
                 imp_distances.extend(distances_chunk)
 
@@ -969,6 +963,66 @@ def _find_impostors_blockwise(X_a, X_b, radii_a, radii_b,
         return imp_indices, np.asarray(imp_distances)
     else:
         return imp_indices
+
+
+def _euclidean_distances_without_checks(X, Y=None, Y_norm_squared=None,
+                                        squared=False, X_norm_squared=None,
+                                        clip=True):
+    """sklearn.pairwise.euclidean_distances without checks with optional clip.
+
+    Parameters
+    ----------
+    X : {array-like, sparse matrix}, shape (n_samples_1, n_features)
+
+    Y : {array-like, sparse matrix}, shape (n_samples_2, n_features)
+
+    Y_norm_squared : array-like, shape (n_samples_2, ), optional
+        Pre-computed dot-products of vectors in Y (e.g.,
+        ``(Y**2).sum(axis=1)``)
+
+    squared : boolean, optional
+        Return squared Euclidean distances.
+
+    X_norm_squared : array-like, shape = [n_samples_1], optional
+        Pre-computed dot-products of vectors in X (e.g.,
+        ``(X**2).sum(axis=1)``)
+
+    clip : bool, optional (default=True)
+
+    Returns
+    -------
+    distances : {array, sparse matrix}, shape (n_samples_1, n_samples_2)
+
+    """
+
+    if X_norm_squared is not None:
+        XX = X_norm_squared
+        if XX.shape == (1, X.shape[0]):
+            XX = XX.T
+    else:
+        XX = row_norms(X, squared=True)[:, np.newaxis]
+
+    if X is Y:  # shortcut in the common case euclidean_distances(X, X)
+        YY = XX.T
+    elif Y_norm_squared is not None:
+        YY = np.atleast_2d(Y_norm_squared)
+    else:
+        YY = row_norms(Y, squared=True)[np.newaxis, :]
+
+    distances = safe_sparse_dot(X, Y.T, dense_output=True)
+    distances *= -2
+    distances += XX
+    distances += YY
+
+    if clip:
+        np.maximum(distances, 0, out=distances)
+
+    if X is Y:
+        # Ensure that distances between vectors and themselves are set to 0.0.
+        # This may not be the case due to floating point rounding errors.
+        distances.flat[::distances.shape[0] + 1] = 0.0
+
+    return distances if squared else np.sqrt(distances, out=distances)
 
 
 def _paired_distances_blockwise(X, ind_a, ind_b, squared=True, block_size=8):
