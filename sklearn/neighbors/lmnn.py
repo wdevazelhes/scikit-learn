@@ -23,6 +23,7 @@ from ..utils.extmath import row_norms, safe_sparse_dot
 from ..utils.random import check_random_state
 from ..utils.multiclass import check_classification_targets
 from ..utils.validation import check_is_fitted, check_array, check_X_y
+from ..externals.six import integer_types, string_types
 
 
 class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
@@ -370,7 +371,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         Raises
         -------
         TypeError
-            If a parameter's type does not match the desired type.
+            If a parameter is not an instance of the desired type.
 
         ValueError
             If a parameter's value violates its legal value range or if the
@@ -406,7 +407,8 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
         # Check the preferred embedding dimensionality
         if self.n_features_out is not None:
-            _check_scalar(self.n_features_out, 'n_features_out', int, 1)
+            _check_scalar(self.n_features_out, 'n_features_out',
+                          integer_types, 1)
 
             if self.n_features_out > X.shape[1]:
                 raise ValueError('The preferred embedding dimensionality '
@@ -424,13 +426,14 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
                                  .format(self.transformation_.shape[1],
                                          X.shape[1]))
 
-        _check_scalar(self.n_neighbors, 'n_neighbors', int, 1, X.shape[0] - 1)
-        _check_scalar(self.max_iter, 'max_iter', int, 1)
+        _check_scalar(self.n_neighbors, 'n_neighbors', integer_types, 1,
+                      X.shape[0] - 1)
+        _check_scalar(self.max_iter, 'max_iter', integer_types, 1)
         _check_scalar(self.tol, 'tol', float, 0.)
-        _check_scalar(self.max_impostors, 'max_impostors', int, 1)
-        _check_scalar(self.impostor_store, 'impostor_store', str)
-        _check_scalar(self.n_jobs, 'n_jobs', int)
-        _check_scalar(self.verbose, 'verbose', int, 0)
+        _check_scalar(self.max_impostors, 'max_impostors', integer_types, 1)
+        _check_scalar(self.impostor_store, 'impostor_store', string_types)
+        _check_scalar(self.n_jobs, 'n_jobs', integer_types)
+        _check_scalar(self.verbose, 'verbose', integer_types, 0)
 
         if self.impostor_store not in ['auto', 'sparse', 'list']:
             raise ValueError("`impostor_store` must be 'auto', 'sparse' or "
@@ -1164,8 +1167,8 @@ def _check_scalar(x, name, target_type, min_val=None, max_val=None):
     name : str
         The name of the parameter to be printed in error messages.
 
-    target_type : type
-        The desired datatype for the parameter.
+    target_type : type or tuple
+        Acceptable data types for the parameter.
 
     min_val : float or int, optional (default=None)
         The minimum value value the parameter can take. If None (default) it
