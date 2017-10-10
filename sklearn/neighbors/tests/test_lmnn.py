@@ -10,6 +10,11 @@ from sklearn.utils.testing import assert_true
 from sklearn.utils.testing import assert_false
 from sklearn import datasets
 from sklearn.neighbors import LargeMarginNearestNeighbor, KNeighborsClassifier
+from sklearn.metrics.pairwise import paired_euclidean_distances
+from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.neighbors.lmnn import _paired_distances_blockwise
+from sklearn.neighbors.lmnn import _euclidean_distances_without_checks
+from sklearn.utils.extmath import row_norms
 
 
 rng = np.random.RandomState(0)
@@ -97,6 +102,7 @@ def test_params_validation():
     assert_raises(ValueError, LMNN(n_neighbors=len(X)).fit, X, y)
     assert_raises(ValueError, LMNN(max_iter=-1).fit, X, y)
     assert_raises(ValueError, LMNN(max_impostors=-1).fit, X, y)
+    assert_raises(ValueError, LMNN(impostor_store='dense').fit, X, y)
 
     fit_func = LMNN(init=np.random.rand(5, 3)).fit
     assert_raises(ValueError, fit_func, X, y)
@@ -396,3 +402,45 @@ def test_terminate_early():
 
     lmnn = LargeMarginNearestNeighbor(n_neighbors=3, max_iter=5)
     lmnn.fit(X_train, y_train)
+
+
+def test_store_opt_result():
+    X = iris_data
+    y = iris_target
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=3, max_iter=5,
+                                      store_opt_result=True)
+    lmnn.fit(X_train, y_train)
+    transformation = lmnn.opt_result_.x
+    assert_equal(transformation.size, X.shape[1]**2)
+
+
+def test_paired_distances_blockwise():
+    n, d = 10000, 100  # 4 or 8 MiB
+    X = rng.rand(n, d)
+    ind_a = rng.permutation(n)
+    ind_b = rng.permutation(n)
+
+    distances = paired_euclidean_distances(X[ind_a], X[ind_b])
+    distances_blockwise = _paired_distances_blockwise(
+        X, ind_a, ind_b, squared=False, block_size=1)
+    assert_array_equal(distances, distances_blockwise)
+
+
+def test_euclidean_distances_without_checks():
+    X = rng.rand(100, 20)
+    Y = rng.rand(50, 20)
+
+    # 2 matrices with no precomputed norms
+    distances1 = euclidean_distances(X, Y)
+    distances2 = _euclidean_distances_without_checks(X, Y)
+
+    assert_array_equal(distances1, distances2)
+
+    # 1 matrix with itself with squared row_norms precomputed and transposed
+    XX = row_norms(X, squared=True)[np.newaxis, :]
+    distances1 = euclidean_distances(X, X_norm_squared=XX)
+    distances2 = _euclidean_distances_without_checks(X, X_norm_squared=XX)
+
+    assert_array_equal(distances1, distances2)
