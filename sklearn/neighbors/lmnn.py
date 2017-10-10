@@ -7,6 +7,7 @@ Large Margin Nearest Neighbor Classification
 # License: BSD 3 clause
 
 from __future__ import print_function
+from builtins import int
 from warnings import warn
 
 import sys
@@ -820,8 +821,8 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
                     imp_col.extend(ind_in[jj])
                     imp_dist.extend(dist_batch)
 
-            imp_row = np.asarray(imp_row, dtype=int)
-            imp_col = np.asarray(imp_col, dtype=int)
+            imp_row = np.asarray(imp_row, dtype=np.int)
+            imp_col = np.asarray(imp_col, dtype=np.int)
             imp_dist = np.asarray(imp_dist)
 
             # Make sure we do not exceed max_impostors
@@ -874,7 +875,7 @@ def _select_target_neighbors(X, y, n_targets, **nn_kwargs):
         The indices of the target neighbors of each sample.
     """
 
-    target_neighbors = np.zeros((X.shape[0], n_targets), dtype=int)
+    target_neighbors = np.zeros((X.shape[0], n_targets), dtype=np.int)
 
     nn = NearestNeighbors(n_neighbors=n_targets, **nn_kwargs)
 
@@ -1098,7 +1099,7 @@ def _sum_weighted_outer_differences(X, weights):
     return np.dot(X.T, safe_sparse_dot(laplacian, X, dense_output=True))
 
 
-def _check_scalar(x, name, dtype, min_val=None, max_val=None):
+def _check_scalar(x, name, target_type, min_val=None, max_val=None):
     """Validate scalar parameters type and value.
 
     Parameters
@@ -1109,7 +1110,7 @@ def _check_scalar(x, name, dtype, min_val=None, max_val=None):
     name : str
         The name of the parameter to be printed in error messages.
 
-    dtype : type
+    target_type : type
         The desired datatype for the parameter.
 
     min_val : float or int, optional (default=None)
@@ -1129,9 +1130,9 @@ def _check_scalar(x, name, dtype, min_val=None, max_val=None):
         If the parameter's value violates the given bounds.
     """
 
-    x_type = type(x)
-    if x_type is not dtype:
-        raise TypeError('`{}` must be {}, not {}.'.format(name, dtype, x_type))
+    if not isinstance(x, target_type):
+        raise TypeError('`{}` must be an instance of {}, not {}.'
+                        .format(name, target_type, type(x)))
 
     if min_val is not None and x < min_val:
         raise ValueError('`{}`= {}, must be >= {}.'.format(name, x, min_val))
