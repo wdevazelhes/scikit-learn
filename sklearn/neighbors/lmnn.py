@@ -63,7 +63,8 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     max_impostors : int, optional (default=500000)
         Maximum number of impostors to consider per iteration. In the worst
-        case this will result in ``max_impostors * n_neighbors`` constraints.
+        case this will allow ``max_impostors * n_neighbors`` constraints to be
+        active.
 
     targets_algorithm : str {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
         Algorithm used to compute the target neighbors, passed to a
