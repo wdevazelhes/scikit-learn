@@ -64,14 +64,14 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     max_impostors : int, optional (default=500000)
         Maximum number of impostors to consider per iteration. In the worst
-        case this will allow ``max_impostors * n_neighbors`` constraints to be
-        active.
+        case this will allow ``max_impostors`` * ``n_neighbors`` constraints
+        to be active.
 
-    targets_algorithm : str {'auto', 'ball_tree', 'kd_tree', 'brute'}, optional
-        Algorithm used to compute the target neighbors, passed to a
-        :class:`neighbors.NearestNeighbors` instance.
+    neighbors_algorithm : str ['auto'|'brute'|'kd_tree'|'ball_tree'], optional
+        Algorithm to use for nearest neighbors search to find the target
+        neighbors, passed to a :class:`neighbors.NearestNeighbors` instance.
 
-    impostor_store : str {'auto', 'list', 'sparse'}, optional
+    impostor_store : str ['auto'|'list'|'sparse'], optional
         list :
             Three lists will be used to store the indices of reference
             samples, the indices of their impostors and the distances between
@@ -126,8 +126,8 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         The linear transformation learned during fitting.
 
     n_neighbors_ : int
-        The provided n_neighbors is decreased if it is greater than or equal
-        to  min(number of elements in each class).
+        The provided ``n_neighbors`` is decreased if it is greater than or
+        equal to  min(number of elements in each class).
 
     classes_inverse_non_singleton_ : array, shape (n_classes_non_singleton,)
         The appearing classes that have more than one sample, encoded as
@@ -203,9 +203,9 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
     def __init__(self, n_neighbors=3, n_features_out=None, init='pca',
                  warm_start=False, max_impostors=500000,
-                 targets_algorithm='auto', impostor_store='auto', max_iter=50,
-                 tol=1e-5, callback=None, store_opt_result=False, verbose=0,
-                 random_state=None, n_jobs=1):
+                 neighbors_algorithm='auto', impostor_store='auto',
+                 max_iter=50, tol=1e-5, callback=None, store_opt_result=False,
+                 verbose=0, random_state=None, n_jobs=1):
 
         # Parameters
         self.n_neighbors = n_neighbors
@@ -213,7 +213,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         self.init = init
         self.warm_start = warm_start
         self.max_impostors = max_impostors
-        self.targets_algorithm = targets_algorithm
+        self.neighbors_algorithm = neighbors_algorithm
         self.impostor_store = impostor_store
         self.max_iter = max_iter
         self.tol = tol
@@ -259,7 +259,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         # Find the target neighbors
         target_neighbors = self._select_target_neighbors(
             X_valid, y_valid, self.n_neighbors_, n_jobs=self.n_jobs,
-            algorithm=self.targets_algorithm)
+            algorithm=self.neighbors_algorithm)
 
         # Compute the gradient part contributed by the target neighbors
         grad_static = self._compute_grad_static(X_valid, target_neighbors)
