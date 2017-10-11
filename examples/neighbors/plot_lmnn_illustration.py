@@ -5,7 +5,7 @@ Large Margin Nearest Neighbor Illustration
 
 An example illustrating the goal of learning a distance metric that maximizes
 the nearest neighbors classification accuracy. The example is solely for
-illustration purposes. Please refer to the :ref:`User Guide <neighbors>` for
+illustration purposes. Please refer to the :ref:`User Guide <lmnn>` for
 more information.
 """
 

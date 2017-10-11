@@ -593,16 +593,8 @@ Notice that one needs to apply the same transformation to the test data
 before predicting. Alternatively, one can use a :class:`sklearn.pipeline.Pipeline`
 to construct the same classifier:
 
-    >>> from sklearn.neighbors import LargeMarginNearestNeighbor
-    >>> from sklearn.neighbors import KNeighborsClassifier
     >>> from sklearn.pipeline import Pipeline
     >>> from sklearn.datasets import load_iris
-    >>> from sklearn.model_selection import train_test_split
-    >>> X, y = load_iris(return_X_y=True)
-    >>> X_train, X_test, y_train, y_test = train_test_split(X, y,
-    ... stratify=y, test_size=0.7, random_state=42)
-    >>> lmnn = LargeMarginNearestNeighbor(n_neighbors=3, random_state=42)
-    >>> knn = KNeighborsClassifier(n_neighbors=3)
     >>> lmnn_clf = Pipeline([('transform', lmnn), ('clf', knn)])
     >>> lmnn_clf.fit(X_train, y_train) # doctest: +ELLIPSIS
     Pipeline(...)
