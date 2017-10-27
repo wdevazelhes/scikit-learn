@@ -27,7 +27,7 @@ class NeighborhoodComponentAnalysis(BaseEstimator, TransformerMixin):
 
     Parameters
     ----------
-    n_features_out: int, optional (default=None)
+    n_features_out : int, optional (default=None)
         Preferred dimensionality of the embedding.
 
     init : string or numpy array, optional (default='pca')
