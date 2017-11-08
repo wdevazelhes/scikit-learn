@@ -1113,6 +1113,7 @@ Model validation
    neighbors.RadiusNeighborsRegressor
    neighbors.NearestCentroid
    neighbors.NearestNeighbors
+   neighbors.LargeMarginNearestNeighbor
    neighbors.NeighborhoodComponentsAnalysis
 
 .. autosummary::
@@ -1121,6 +1122,7 @@ Model validation
 
    neighbors.kneighbors_graph
    neighbors.radius_neighbors_graph
+   neighbors.make_lmnn_pipeline
 
 .. _neural_network_ref:
 
