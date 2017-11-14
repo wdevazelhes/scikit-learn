@@ -6,11 +6,9 @@ Dimensionality Reduction with Large Margin Nearest Neighbor
 Sample usage of Large Margin Nearest Neighbor for dimensionality reduction.
 
 This example compares different (linear) dimensionality reduction methods
-applied on the Olivetti Faces data set. The data set contains ten different
-images of each of 40 distinct persons. For some subjects, the images were
-taken at different times, varying the lighting, facial expressions (open /
-closed eyes, smiling / not smiling) and facial details (glasses / no glasses).
-Each image of dimensions 64x64 is reduced to a two-dimensional data point.
+applied on the Digits data set. The data set contains images of digits from
+0 to 9 with approximately 180 samples of each class. Each image is of
+dimension 8x8 = 64, and is reduced to a two-dimensional data point.
 
 Principal Component Analysis (PCA) applied to this data identifies the
 combination of attributes (principal components, or directions in the
@@ -21,11 +19,11 @@ Linear Discriminant Analysis (LDA) tries to identify attributes that
 account for the most variance *between classes*. In particular,
 LDA, in contrast to PCA, is a supervised method, using known class labels.
 
-Large Margin Nearest Neighbor (LMNN) tries to find a feature space such that
-the nearest neighbors classification accuracy is maximized. Like LDA, it is a
-supervised method.
+Neighborhood Components Analysis (NCA) tries to find a feature space such
+that a stochastic nearest neighbor algorithm will give the best accuracy.
+Like LDA, it is a supervised method.
 
-One can see that LMNN enforces a clustering of the data that is visually
+One can see that NCA enforces a clustering of the data that is visually
 meaningful even after the large dimensionality reduction.
 """
 
@@ -39,8 +37,8 @@ from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.neighbors import LargeMarginNearestNeighbor, \
-    KNeighborsClassifier, NeighborhoodComponentsAnalysis
+from sklearn.neighbors import KNeighborsClassifier, \
+    NeighborhoodComponentsAnalysis
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -49,7 +47,7 @@ print(__doc__)
 n_neighbors = 3
 random_state = 0
 
-# Load Olivetti Faces dataset
+# Load Digits dataset
 digits = datasets.load_digits()
 X, y = digits.data, digits.target
 
@@ -69,14 +67,7 @@ pca = make_pipeline(StandardScaler(),
 lda = make_pipeline(StandardScaler(),
                     LinearDiscriminantAnalysis(n_components=2))
 
-# Reduce dimension to 2 with LargeMarginNearestNeighbor
-lmnn = make_pipeline(StandardScaler(),
-                     LargeMarginNearestNeighbor(n_neighbors=n_neighbors,
-                                                n_features_out=2,
-                                                max_iter=20, verbose=1,
-                                                random_state=random_state))
-
-# Reduce dimension to 2 with LargeMarginNearestNeighbor
+# Reduce dimension to 2 with NeighborhoodComponentAnalysis
 nca = make_pipeline(StandardScaler(),
                     NeighborhoodComponentsAnalysis(n_features_out=2,
                                                    verbose=1,
@@ -86,11 +77,11 @@ nca = make_pipeline(StandardScaler(),
 knn = KNeighborsClassifier(n_neighbors=n_neighbors)
 
 # Make a list of the methods to be compared
-dim_reduction_methods = [('PCA', pca), ('LDA', lda), ('LMNN', lmnn),
-                         ('NCA', nca)]
+dim_reduction_methods = [('PCA', pca), ('LDA', lda), ('NCA', nca)]
 
+plt.figure()
 for i, (name, model) in enumerate(dim_reduction_methods):
-    plt.figure()
+    plt.subplot(1, 3, i + 1)
 
     # Fit the method's model
     model.fit(X_train, y_train)
