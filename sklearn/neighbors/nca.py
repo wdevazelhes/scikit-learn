@@ -139,14 +139,16 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, n_features_out=None, init='pca', max_iter=50,
-                 tol=1e-5, callback=None, store_opt_result=False, verbose=0,
+                 ftol=2.220446049250313e-09, gtol= 1e-05, callback=None, store_opt_result=False,
+                 verbose=0,
                  random_state=None):
 
         # Parameters
         self.n_features_out = n_features_out
         self.init = init
         self.max_iter = max_iter
-        self.tol = tol
+        self.ftol = ftol
+        self.gtol = gtol
         self.callback = callback
         self.store_opt_result = store_opt_result
         self.verbose = verbose
@@ -194,8 +196,9 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
                             'args': (X_valid, y_valid, masks, -1.0),
                             'jac': True,
                             'x0': transformation,
-                            'tol': self.tol,
-                            'options': dict(maxiter=self.max_iter, disp=disp),
+                            'options': dict(maxiter=self.max_iter,
+                                            disp=disp, ftol=self.ftol,
+                                            gtol=self.gtol),
                             'callback': self._callback
                             }
 
@@ -292,7 +295,8 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
                                  .format(self.n_features_out, X.shape[1]))
 
         _check_scalar(self.max_iter, 'max_iter', integer_types, 1)
-        _check_scalar(self.tol, 'tol', float, 0.)
+        _check_scalar(self.ftol, 'tol', float, 0.)
+        _check_scalar(self.gtol, 'tol', float, 0.)
         _check_scalar(self.verbose, 'verbose', integer_types, 0)
 
         if self.callback is not None:
