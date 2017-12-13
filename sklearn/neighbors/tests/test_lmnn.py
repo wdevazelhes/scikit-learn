@@ -2,6 +2,7 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 from sklearn.utils.testing import assert_array_equal
+from sklearn.utils.testing import assert_array_almost_equal
 from sklearn.utils.testing import assert_allclose
 from sklearn.utils.testing import assert_raises
 from sklearn.utils.testing import assert_warns
@@ -9,11 +10,13 @@ from sklearn.utils.testing import assert_equal
 from sklearn.utils.testing import assert_true
 from sklearn.utils.testing import assert_false
 from sklearn import datasets
-from sklearn.neighbors import LargeMarginNearestNeighbor, KNeighborsClassifier
-from sklearn.metrics.pairwise import paired_euclidean_distances
-from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.neighbors import LargeMarginNearestNeighbor
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors.lmnn import make_lmnn_pipeline
 from sklearn.neighbors.lmnn import _paired_distances_blockwise
 from sklearn.neighbors.lmnn import _euclidean_distances_without_checks
+from sklearn.metrics.pairwise import paired_euclidean_distances
+from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.utils.extmath import row_norms
 
 
@@ -91,10 +94,13 @@ def test_params_validation():
     assert_raises(TypeError, LMNN(verbose='true').fit, X, y)
     assert_raises(TypeError, LMNN(max_impostors=23.1).fit, X, y)
     assert_raises(TypeError, LMNN(tol=1).fit, X, y)
-    assert_raises(TypeError, LMNN(n_features_out='invalid').fit, X, y)
+    assert_raises(TypeError, LMNN(n_features_out='invalid').fit,
+                  X, y)
     assert_raises(TypeError, LMNN(n_jobs='yes').fit, X, y)
     assert_raises(TypeError, LMNN(warm_start=1).fit, X, y)
     assert_raises(TypeError, LMNN(impostor_store=0.5).fit, X, y)
+    assert_raises(TypeError, LMNN(neighbors_params=65).fit, X, y)
+    assert_raises(TypeError, LMNN(weight_push_loss='0.3').fit, X, y)
 
     # ValueError
     assert_raises(ValueError, LMNN(init=1).fit, X, y)
@@ -103,6 +109,8 @@ def test_params_validation():
     assert_raises(ValueError, LMNN(max_iter=-1).fit, X, y)
     assert_raises(ValueError, LMNN(max_impostors=-1).fit, X, y)
     assert_raises(ValueError, LMNN(impostor_store='dense').fit, X, y)
+    assert_raises(ValueError, LMNN(weight_push_loss=2.).fit, X, y)
+    assert_raises(ValueError, LMNN(weight_push_loss=0.).fit, X, y)
 
     fit_func = LMNN(init=np.random.rand(5, 3)).fit
     assert_raises(ValueError, fit_func, X, y)
@@ -172,18 +180,15 @@ def test_n_features_out():
     transformation = np.array([[1, 2, 3], [4, 5, 6]])
 
     # n_features_out = X.shape[1] != transformation.shape[0]
-    lmnn = LargeMarginNearestNeighbor(init=transformation,
-                                      n_neighbors=1, n_features_out=3)
+    lmnn = LargeMarginNearestNeighbor(init=transformation, n_features_out=3)
     assert_raises(ValueError, lmnn.fit, X, y)
 
     # n_features_out > X.shape[1]
-    lmnn = LargeMarginNearestNeighbor(init=transformation,
-                                      n_neighbors=1, n_features_out=5)
+    lmnn = LargeMarginNearestNeighbor(init=transformation, n_features_out=5)
     assert_raises(ValueError, lmnn.fit, X, y)
 
     # n_features_out < X.shape[1]
-    lmnn = LargeMarginNearestNeighbor(n_neighbors=1, n_features_out=2,
-                                      init='identity')
+    lmnn = LargeMarginNearestNeighbor(n_features_out=2, init='identity')
     lmnn.fit(X, y)
 
 
@@ -231,6 +236,14 @@ def test_max_impostors():
 
     lmnn = LargeMarginNearestNeighbor(n_neighbors=3, max_impostors=1,
                                       impostor_store='sparse')
+    lmnn.fit(iris_data, iris_target)
+
+
+def test_neighbors_params():
+    from scipy.spatial.distance import hamming
+
+    params = {'algorithm': 'brute', 'metric': hamming}
+    lmnn = LargeMarginNearestNeighbor(n_neighbors=3, neighbors_params=params)
     lmnn.fit(iris_data, iris_target)
 
 
@@ -304,8 +317,7 @@ def test_warm_start_diff_inputs():
     X, y = make_cla(n_samples=30, n_features=5, n_classes=4, n_redundant=0,
                     n_informative=5, random_state=0)
 
-    lmnn = LargeMarginNearestNeighbor(n_neighbors=1, warm_start=True,
-                                      max_iter=5)
+    lmnn = LargeMarginNearestNeighbor(warm_start=True, max_iter=5)
     lmnn.fit(X, y)
 
     X_less_features, y = make_cla(n_samples=30, n_features=4, n_classes=4,
@@ -444,3 +456,31 @@ def test_euclidean_distances_without_checks():
     distances2 = _euclidean_distances_without_checks(X, X_norm_squared=XX)
 
     assert_array_equal(distances1, distances2)
+
+
+def test_pipeline_equivalency():
+    X = iris_data
+    y = iris_target
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+
+    # Use init='identity' to ensure reproducibility
+    lmnn_params = dict(n_neighbors=3, max_iter=10, init='identity',
+                       random_state=42)
+    n_neighbors = 3
+
+    lmnn = LargeMarginNearestNeighbor(**lmnn_params)
+    lmnn.fit(X_train, y_train)
+
+    lmnn_pipe = make_lmnn_pipeline(**lmnn_params)
+    lmnn_pipe.fit(X_train, y_train)
+
+    pipe_transformation = lmnn_pipe.named_steps.lmnn.transformation_
+    assert_array_almost_equal(lmnn.transformation_, pipe_transformation)
+
+    knn = KNeighborsClassifier(n_neighbors=n_neighbors)
+    knn.fit(lmnn.transform(X_train), y_train)
+    score = knn.score(lmnn.transform(X_test), y_test)
+
+    score_pipe = lmnn_pipe.score(X_test, y_test)
+
+    assert_equal(score, score_pipe)

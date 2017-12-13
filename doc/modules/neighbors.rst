@@ -523,8 +523,6 @@ Large Margin Nearest Neighbor
 
 .. sectionauthor:: John Chiotellis <johnyc.code@gmail.com>
 
-.. currentmodule:: sklearn.neighbors
-
 Large Margin Nearest Neighbor (LMNN, :class:`LargeMarginNearestNeighbor`) is
 a distance metric learning algorithm which aims to improve the accuracy of
 nearest neighbors classification compared to the standard Euclidean distance.
@@ -555,8 +553,8 @@ regularization.
 Classification
 --------------
 
-Combined with a nearest neighbors classifier (:class:`KNeighborsClassifier`)
-, this method is attractive for classification because it can naturally
+Combined with a nearest neighbors classifier (:class:`KNeighborsClassifier`),
+this method is attractive for classification because it can naturally
 handle multi-class problems without any increase in the model size, and only
 a single parameter (``n_neighbors``) has to be selected by the user before
 training.
@@ -567,11 +565,10 @@ related methods such as Linear Discriminant Analysis, LMNN does not make any
 assumptions about the class distributions. The nearest neighbor classification
 can naturally produce highly irregular decision boundaries.
 
-To use this model for classification, one can simply fit a nearest neighbors
-classifier (:class:`KNeighborsClassifier`) on the data after transforming
-them with the linear transformation :math:`L` (attribute :attr:`transformation_`)
-found by LMNN. This is implemented by :func:`LargeMarginNearestNeighbor.transform`.
-Here is an example on how to use the two classes:
+To use this model for classification, one needs to combine a :class:`LargeMarginNearestNeighbor`
+instance that learns the optimal transformation with a :class:`KNeighborsClassifier`
+instance that performs the classification in the embedded space. Here is an
+example using the two classes:
 
     >>> from sklearn.neighbors import LargeMarginNearestNeighbor
     >>> from sklearn.neighbors import KNeighborsClassifier
@@ -583,27 +580,35 @@ Here is an example on how to use the two classes:
     >>> lmnn = LargeMarginNearestNeighbor(n_neighbors=3, random_state=42)
     >>> lmnn.fit(X_train, y_train) # doctest: +ELLIPSIS
     LargeMarginNearestNeighbor(...)
+    >>> # Apply the learned transformation when using KNeighborsClassifier
     >>> knn = KNeighborsClassifier(n_neighbors=3)
     >>> knn.fit(lmnn.transform(X_train), y_train) # doctest: +ELLIPSIS
     KNeighborsClassifier(...)
     >>> print(knn.score(lmnn.transform(X_test), y_test))
     0.971428571429
 
-Notice that one needs to apply the same transformation to the test data
-before predicting. Alternatively, one can use a :class:`sklearn.pipeline.Pipeline`
-to construct the same classifier:
+Alternatively, one can create a :class:`sklearn.pipeline.Pipeline` instance
+that automatically applies the transformation when fitting or predicting:
 
     >>> from sklearn.pipeline import Pipeline
-    >>> from sklearn.datasets import load_iris
-    >>> lmnn_clf = Pipeline([('transform', lmnn), ('clf', knn)])
-    >>> lmnn_clf.fit(X_train, y_train) # doctest: +ELLIPSIS
+    >>> lmnn = LargeMarginNearestNeighbor(n_neighbors=3, random_state=42)
+    >>> knn = KNeighborsClassifier(n_neighbors=3)
+    >>> lmnn_pipe = Pipeline([('lmnn', lmnn), ('knn', knn)])
+    >>> lmnn_pipe.fit(X_train, y_train) # doctest: +ELLIPSIS
     Pipeline(...)
-    >>> print(lmnn_clf.score(X_test, y_test))
+    >>> print(lmnn_pipe.score(X_test, y_test))
     0.971428571429
 
-In this case the transformation is applied to the inputs automatically whenever
-:meth:`sklearn.pipeline.Pipeline.fit` or :meth:`sklearn.pipeline.Pipeline.predict`
-is called.
+For convenience, one can directly construct such a :class:`sklearn.pipeline.Pipeline`
+instance by calling :func:`make_lmnn_pipeline`:
+
+    >>> from sklearn.neighbors import make_lmnn_pipeline
+    >>> lmnn_pipe = make_lmnn_pipeline(n_neighbors=3, n_neighbors_predict=3,
+    ... random_state=42)
+    >>> lmnn_pipe.fit(X_train, y_train) # doctest: +ELLIPSIS
+    Pipeline(...)
+    >>> print(lmnn_pipe.score(X_test, y_test))
+    0.971428571429
 
 .. |lmnn_classification_1| image:: ../auto_examples/neighbors/images/sphx_glr_plot_lmnn_classification_001.png
    :target: ../auto_examples/neighbors/plot_lmnn_classification.html
@@ -682,9 +687,10 @@ LMNN solves the following (nonconvex) minimization problem:
     \min_L \varepsilon(L) = (1 - \mu) \varepsilon_{\text{pull}} (L) +
     \mu \varepsilon_{\text{push}} (L) \text{, } \quad \mu \in [0,1].
 
-The parameter :math:`\mu` is a trade-off between penalizing large distances
-to target neighbors and penalizing margin violations by impostors. In
-practice, the two terms are weighted equally.
+The parameter :math:`\mu` (``weight_push_loss``) is a trade-off between
+penalizing large distances to target neighbors and penalizing margin
+violations by impostors. In practice, the two terms are usually weighted
+equally (:math:`\mu = 0.5`).
 
 
 Mahalanobis distance
@@ -711,8 +717,7 @@ https://bitbucket.org/mlcircus/lmnn which solves the unconstrained problem.
 It finds a linear transformation :math:`L` by optimization with L-BFGS instead
 of solving the constrained problem that finds the globally optimal distance
 metric. Different from the paper, the problem solved by this implementation is
-with the *squared* hinge loss (to make the problem differentiable). The
-parameter :math:`\mu` is fixed to :math:`0.5`.
+with the *squared* hinge loss (to make the problem differentiable).
 
 See the examples below and the doc string of :meth:`LargeMarginNearestNeighbor.fit`
 for further information.
