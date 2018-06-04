@@ -10,8 +10,13 @@ from __future__ import print_function
 import numpy as np
 import sys
 import time
-from scipy.misc import logsumexp
+from functools import partial
+
+from scipy.spatial.distance import pdist
+from scipy.special import logsumexp
 from scipy.optimize import minimize
+
+from sklearn.metrics import pairwise_distances
 from ..preprocessing import OneHotEncoder
 from ..base import BaseEstimator, TransformerMixin
 from ..preprocessing import LabelEncoder
@@ -20,6 +25,7 @@ from ..utils.multiclass import check_classification_targets
 from ..utils.random import check_random_state
 from ..utils.validation import check_is_fitted, check_array, check_X_y
 from ..externals.six import integer_types
+from ..metrics import pairwise_distances_chunked
 
 
 class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
@@ -397,6 +403,15 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
 
         self.n_iter_ += 1
 
+    @staticmethod
+    def p_i_chunked(chunk, start, mask=None):  # todo: change None
+        stop = start + chunk.shape[0]
+        np.fill_diagonal(chunk, np.inf)
+        chunk = np.exp(- chunk - logsumexp(- chunk))
+        sum_similar = np.sum(chunk[mask[start:stop]])
+        sum_dissimilar = np.sum(chunk[~mask[start:stop]])
+        return sum_similar / (sum_similar + sum_dissimilar)
+
     def _loss_grad_lbfgs(self, transformation, X, y, masks, sign=1.0):
         """Compute the loss and the loss gradient w.r.t. ``transformation``.
 
@@ -438,36 +453,33 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
         t_funcall = time.time()
 
         transformation = transformation.reshape(-1, X.shape[1])
-        loss = 0
-        gradient = np.zeros(transformation.shape)
         X_embedded = np.dot(X, transformation.T)
 
-        # for every sample x_i, compute its contribution to loss and gradient
-        for i in range(X.shape[0]):
-            # compute squared distances to x_i in embedded space
-            diff_embedded = X_embedded[i] - X_embedded
-            dist_embedded = np.einsum('ij,ij->i', diff_embedded,
-                                      diff_embedded)
-            dist_embedded[i] = np.inf
 
-            # compute exponentiated distances (use the log-sum-exp trick to
-            # avoid numerical instabilities
-            exp_dist_embedded = np.exp(-dist_embedded -
-                                       logsumexp(-dist_embedded))
-            ci = masks[:, y[i]]  # samples that are in the same class as x_i
-            p_i_j = exp_dist_embedded[ci]
-            diffs = X[i, :] - X
-            diff_ci = diffs[ci, :]
-            diff_not_ci = diffs[~ci, :]
-            sum_ci = diff_ci.T.dot(
-                (p_i_j[:, np.newaxis] * diff_embedded[ci, :]))
-            sum_not_ci = diff_not_ci.T.dot((exp_dist_embedded[~ci][:,
-                                            np.newaxis] *
-                                            diff_embedded[~ci, :]))
-            p_i = np.sum(p_i_j)  # probability of x_i to be correctly
-            # classified
-            gradient += 2 * (p_i * sum_not_ci + (p_i - 1) * sum_ci).T
-            loss += p_i
+        # for every sample x_i, compute its contribution to loss and gradient
+        soft = pairwise_distances(X_embedded, metric='sqeuclidean')
+        np.fill_diagonal(soft, np.inf)
+        soft = np.exp(-soft - logsumexp(-soft, axis=1, keepdims=True))
+        # warning: compute all pairwise distances before
+        p = np.zeros((X.shape[0], 1))
+        q = np.zeros((X.shape[0], 1))
+        for i in range(masks.shape[1]):
+            mask = masks[:, i]
+            p[mask, :] = np.sum(soft[mask][:, mask], axis=1,
+                                  keepdims=True)
+            q[mask, :] = np.sum(soft[mask][:, mask], axis=0,
+                                  keepdims=True).T
+        loss = np.sum(p)
+        pd = p * soft
+        gradient = (2 *
+                   (X_embedded.T.dot(X * (soft.T.dot(p) - q)) -
+                   (X_embedded.T.dot(pd + pd.T).dot(X))
+                        +
+           sum(X_embedded[c].T.dot(soft[c][:, c] + soft[c][:, c].T).dot(X[c])
+                       for c in masks.T))
+                   )
+
+
 
         if self.verbose:
             t_funcall = time.time() - t_funcall
