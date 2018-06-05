@@ -25,15 +25,15 @@ distance is the most common choice.
 Neighbors-based methods are known as *non-generalizing* machine
 learning methods, since they simply "remember" all of its training data
 (possibly transformed into a fast indexing structure such as a
-:ref:`Ball Tree <ball_tree>` or :ref:`KD Tree <kd_tree>`.).
+:ref:`Ball Tree <ball_tree>` or :ref:`KD Tree <kd_tree>`).
 
 Despite its simplicity, nearest neighbors has been successful in a
 large number of classification and regression problems, including
-handwritten digits or satellite image scenes. Being a non-parametric method,
+handwritten digits and satellite image scenes. Being a non-parametric method,
 it is often successful in classification situations where the decision
 boundary is very irregular.
 
-The classes in :mod:`sklearn.neighbors` can handle either Numpy arrays or
+The classes in :mod:`sklearn.neighbors` can handle either NumPy arrays or
 `scipy.sparse` matrices as input.  For dense matrices, a large number of
 possible distance metrics are supported.  For sparse matrices, arbitrary
 Minkowski metrics are supported for searches.
@@ -62,8 +62,8 @@ of each option, see `Nearest Neighbor Algorithms`_.
     .. warning::
 
         Regarding the Nearest Neighbors algorithms, if two
-        neighbors, neighbor :math:`k+1` and :math:`k`, have identical distances
-        but different labels, the results will depend on the ordering of the
+        neighbors :math:`k+1` and :math:`k` have identical distances
+        but different labels, the result will depend on the ordering of the
         training data.
 
 Finding the Nearest Neighbors
@@ -85,12 +85,12 @@ used:
            [4, 3],
            [5, 4]]...)
     >>> distances
-    array([[ 0.        ,  1.        ],
-           [ 0.        ,  1.        ],
-           [ 0.        ,  1.41421356],
-           [ 0.        ,  1.        ],
-           [ 0.        ,  1.        ],
-           [ 0.        ,  1.41421356]])
+    array([[0.        , 1.        ],
+           [0.        , 1.        ],
+           [0.        , 1.41421356],
+           [0.        , 1.        ],
+           [0.        , 1.        ],
+           [0.        , 1.41421356]])
 
 Because the query set matches the training set, the nearest neighbor of each
 point is the point itself, at a distance of zero.
@@ -99,14 +99,14 @@ It is also possible to efficiently produce a sparse graph showing the
 connections between neighboring points:
 
     >>> nbrs.kneighbors_graph(X).toarray()
-    array([[ 1.,  1.,  0.,  0.,  0.,  0.],
-           [ 1.,  1.,  0.,  0.,  0.,  0.],
-           [ 0.,  1.,  1.,  0.,  0.,  0.],
-           [ 0.,  0.,  0.,  1.,  1.,  0.],
-           [ 0.,  0.,  0.,  1.,  1.,  0.],
-           [ 0.,  0.,  0.,  0.,  1.,  1.]])
+    array([[1., 1., 0., 0., 0., 0.],
+           [1., 1., 0., 0., 0., 0.],
+           [0., 1., 1., 0., 0., 0.],
+           [0., 0., 0., 1., 1., 0.],
+           [0., 0., 0., 1., 1., 0.],
+           [0., 0., 0., 0., 1., 1.]])
 
-Our dataset is structured such that points nearby in index order are nearby
+The dataset is structured such that points nearby in index order are nearby
 in parameter space, leading to an approximately block-diagonal matrix of
 K-nearest neighbors.  Such a sparse graph is useful in a variety of
 circumstances which make use of spatial relationships between points for
@@ -134,10 +134,10 @@ have the same interface; we'll show an example of using the KD Tree here:
            [5, 4]]...)
 
 Refer to the :class:`KDTree` and :class:`BallTree` class documentation
-for more information on the options available for neighbors searches,
-including specification of query strategies, of various distance metrics, etc.
-For a list of available metrics, see the documentation of the
-:class:`DistanceMetric` class.
+for more information on the options available for nearest neighbors searches,
+including specification of query strategies, distance metrics, etc. For a list
+of available metrics, see the documentation of the :class:`DistanceMetric`
+class.
 
 .. _classification:
 
@@ -160,10 +160,9 @@ training point, where :math:`r` is a floating-point value specified by
 the user.
 
 The :math:`k`-neighbors classification in :class:`KNeighborsClassifier`
-is the more commonly used of the two techniques.  The
-optimal choice of the value :math:`k` is highly data-dependent: in general
-a larger :math:`k` suppresses the effects of noise, but makes the
-classification boundaries less distinct.
+is the most commonly used technique. The optimal choice of the value :math:`k`
+is highly data-dependent: in general a larger :math:`k` suppresses the effects
+of noise, but makes the classification boundaries less distinct.
 
 In cases where the data is not uniformly sampled, radius-based neighbors
 classification in :class:`RadiusNeighborsClassifier` can be a better choice.
@@ -180,9 +179,7 @@ be accomplished through the ``weights`` keyword.  The default value,
 ``weights = 'uniform'``, assigns uniform weights to each neighbor.
 ``weights = 'distance'`` assigns weights proportional to the inverse of the
 distance from the query point.  Alternatively, a user-defined function of the
-distance can be supplied which is used to compute the weights.
-
-
+distance can be supplied to compute the weights.
 
 .. |classification_1| image:: ../auto_examples/neighbors/images/sphx_glr_plot_classification_001.png
    :target: ../auto_examples/neighbors/plot_classification.html
@@ -261,7 +258,7 @@ Brute Force
 -----------
 
 Fast computation of nearest neighbors is an active area of research in
-machine learning.  The most naive neighbor search implementation involves
+machine learning. The most naive neighbor search implementation involves
 the brute-force computation of distances between all pairs of points in the
 dataset: for :math:`N` samples in :math:`D` dimensions, this approach scales
 as :math:`O[D N^2]`.  Efficient brute-force neighbors searches can be very
@@ -286,7 +283,7 @@ The basic idea is that if point :math:`A` is very distant from point
 then we know that points :math:`A` and :math:`C`
 are very distant, *without having to explicitly calculate their distance*.
 In this way, the computational cost of a nearest neighbors search can be
-reduced to :math:`O[D N \log(N)]` or better.  This is a significant
+reduced to :math:`O[D N \log(N)]` or better. This is a significant
 improvement over brute-force for large :math:`N`.
 
 An early approach to taking advantage of this aggregate information was
@@ -297,7 +294,7 @@ structure which recursively partitions the parameter space along the data
 axes, dividing it into nested orthotropic regions into which data points
 are filed.  The construction of a KD tree is very fast: because partitioning
 is performed only along the data axes, no :math:`D`-dimensional distances
-need to be computed.  Once constructed, the nearest neighbor of a query
+need to be computed. Once constructed, the nearest neighbor of a query
 point can be determined with only :math:`O[\log(N)]` distance computations.
 Though the KD tree approach is very fast for low-dimensional (:math:`D < 20`)
 neighbors searches, it becomes inefficient as :math:`D` grows very large:
@@ -323,9 +320,8 @@ To address the inefficiencies of KD Trees in higher dimensions, the *ball tree*
 data structure was developed.  Where KD trees partition data along
 Cartesian axes, ball trees partition data in a series of nesting
 hyper-spheres.  This makes tree construction more costly than that of the
-KD tree, but
-results in a data structure which can be very efficient on highly-structured
-data, even in very high dimensions.
+KD tree, but results in a data structure which can be very efficient on
+highly structured data, even in very high dimensions.
 
 A ball tree recursively divides the data into
 nodes defined by a centroid :math:`C` and radius :math:`r`, such that each
@@ -514,6 +510,232 @@ the model from 0.81 to 0.82.
 
   * :ref:`sphx_glr_auto_examples_neighbors_plot_nearest_centroid.py`: an example of
     classification using nearest centroid with different shrink thresholds.
+
+
+
+.. _nca:
+
+Neighborhood Components Analysis
+================================
+
+.. sectionauthor:: William de Vazelhes <william.de-vazelhes@inria.fr>
+
+Neighborhood Components Analysis (NCA, :class:`NeighborhoodComponentsAnalysis`)
+is a distance metric learning algorithm which aims to improve the accuracy of
+nearest neighbors classification compared to the standard Euclidean distance.
+The algorithm  directly  maximizes  a stochastic  variant  of  the
+leave-one-out k-nearest neighbors (KNN) score on the training set.  It can also
+learn a low-dimensional linear  embedding  of  data  that  can  be used for
+data  visualization and fast classification.
+
+.. |nca_illustration_1| image:: ../auto_examples/neighbors/images/sphx_glr_plot_nca_illustration_001.png
+   :target: ../auto_examples/neighbors/plot_nca_illustration.html
+   :scale: 50
+
+.. |nca_illustration_2| image:: ../auto_examples/neighbors/images/sphx_glr_plot_nca_illustration_002.png
+   :target: ../auto_examples/neighbors/plot_nca_illustration.html
+   :scale: 50
+
+.. centered:: |nca_illustration_1| |nca_illustration_2|
+
+
+In the above illustrating figure, we consider some points from a randomly
+generated dataset. We focus on the stochastic KNN classification of point n°3,
+the thickness of a bond representing a softmax distance hence the weight of the
+neighbor vote in the classification. In the original space, sample 3 has many
+stochastic neighbors from various classes, so the right class is not very
+likely. However, in the embedding space learned by NCA, the only non-negligible
+stochastic neighbors are from the same class as sample 3, guaranteeing that the
+latter will be well classified.
+
+
+
+Classification
+--------------
+
+Combined with a nearest neighbors classifier (:class:`KNeighborsClassifier`),
+NCA is attractive for classification because it can naturally handle
+multi-class problems without any increase in the model size, and does not
+introduce additional parameters that require fine-tuning by the user.
+
+NCA classification has been shown to work well in practice for data sets of
+varying size and difficulty. In contrast to related methods such as Linear
+Discriminant Analysis, NCA does not make any assumptions about the class
+distributions. The nearest neighbor classification can naturally produce highly
+irregular decision boundaries.
+
+To use this model for classification, one needs to combine a
+:class:`NeighborhoodComponentsAnalysis` instance that learns the optimal
+transformation with a :class:`KNeighborsClassifier` instance that performs the
+classification in the embedding space. Here is an example using the two
+classes:
+
+    >>> from sklearn.neighbors import NeighborhoodComponentsAnalysis
+    >>> from sklearn.neighbors import KNeighborsClassifier
+    >>> from sklearn.datasets import load_iris
+    >>> from sklearn.model_selection import train_test_split
+    >>> X, y = load_iris(return_X_y=True)
+    >>> X_train, X_test, y_train, y_test = train_test_split(X, y,
+    ... stratify=y, test_size=0.7, random_state=42)
+    >>> nca = NeighborhoodComponentsAnalysis(random_state=42)
+    >>> nca.fit(X_train, y_train) # doctest: +ELLIPSIS
+    NeighborhoodComponentsAnalysis(...)
+    >>> # Apply the learned transformation when using KNeighborsClassifier
+    >>> knn = KNeighborsClassifier(n_neighbors=3)
+    >>> knn.fit(nca.transform(X_train), y_train) # doctest: +ELLIPSIS
+    KNeighborsClassifier(...)
+    >>> print(knn.score(nca.transform(X_test), y_test))
+    0.961904761905
+
+Alternatively, one can create a :class:`sklearn.pipeline.Pipeline` instance
+that automatically applies the transformation when fitting or predicting:
+
+    >>> from sklearn.pipeline import Pipeline
+    >>> nca = NeighborhoodComponentsAnalysis(random_state=42)
+    >>> knn = KNeighborsClassifier(n_neighbors=3)
+    >>> nca_pipe = Pipeline([('nca', nca), ('knn', knn)])
+    >>> nca_pipe.fit(X_train, y_train) # doctest: +ELLIPSIS
+    Pipeline(...)
+    >>> print(nca_pipe.score(X_test, y_test))
+    0.961904761905
+
+.. |nca_classification_1| image:: ../auto_examples/neighbors/images/sphx_glr_plot_nca_classification_001.png
+   :target: ../auto_examples/neighbors/plot_nca_classification.html
+   :scale: 50
+
+.. |nca_classification_2| image:: ../auto_examples/neighbors/images/sphx_glr_plot_nca_classification_002.png
+   :target: ../auto_examples/neighbors/plot_nca_classification.html
+   :scale: 50
+
+.. centered:: |nca_classification_1| |nca_classification_2|
+
+The plot shows decision boundaries for Nearest Neighbor Classification and
+Neighborhood Components Analysis classification on the iris dataset, when
+training and scoring on only two features, for visualisation purpose.
+
+
+Dimensionality reduction
+------------------------
+
+NCA can be used to perform supervised dimensionality reduction. The input data
+are projected onto a linear subspace consisting of the directions which
+minimize the NCA objective. The desired dimensionality can be set using the
+parameter ``n_features_out``. For instance, the following figure shows a
+comparison of dimensionality reduction with Principal Component Analysis
+(:class:`sklearn.decomposition.PCA`), Linear Discriminant Analysis
+(:class:`sklearn.discriminant_analysis.LinearDiscriminantAnalysis`) and
+Neighborhood Component Analysis (:class:`NeighborhoodComponentsAnalysis`) on
+the Digits dataset, a dataset with size :math:`n_{samples} = 1797` and
+:math:`n_{features} = 64`. The data set is split into a training and a test set
+of equal size, then standardized. For evaluation the 3-nearest neighbor
+classification accuracy is computed on the 2-dimensional embedding found by
+each method. Each data sample belongs to one of 10 classes.
+
+.. |nca_dim_reduction_1| image:: ../auto_examples/neighbors/images/sphx_glr_plot_nca_dim_reduction_001.png
+   :target: ../auto_examples/neighbors/plot_nca_dim_reduction.html
+   :width: 32%
+
+.. |nca_dim_reduction_2| image:: ../auto_examples/neighbors/images/sphx_glr_plot_nca_dim_reduction_002.png
+   :target: ../auto_examples/neighbors/plot_nca_dim_reduction.html
+   :width: 32%
+
+.. |nca_dim_reduction_3| image:: ../auto_examples/neighbors/images/sphx_glr_plot_nca_dim_reduction_003.png
+   :target: ../auto_examples/neighbors/plot_nca_dim_reduction.html
+   :width: 32%
+
+.. centered:: |nca_dim_reduction_1| |nca_dim_reduction_2| |nca_dim_reduction_3|
+
+
+Mathematical formulation
+------------------------
+
+The goal of NCA is to learn an optimal linear transformation matrix of size
+``(n_features_out, n_features)``, which maximises in average the probability
+:math:`p_i` of sample :math:`i` being correctly classified, i.e.:
+
+.. math::
+
+  \underset{L}{\arg\max} \sum\limits_{i=0}^{N - 1} p_{i}
+
+with :math:`N` = ``n_samples`` and :math:`p_i` the probability of sample
+:math:`i` being correctly classified according to a stochastic nearest
+neighbors rule in the learned embedded space:
+
+.. math::
+
+  p_{i}=\sum\limits_{j \in C_i}{p_{i j}}
+
+where :math:`C_i` is the set of points in the same class as sample :math:`i`,
+and :math:`p_{i j}` is the softmax over Euclidean distances in the embedded
+space:
+
+.. math::
+
+  p_{i j} = \frac{\exp(-||L x_i - L x_j||^2)}{\sum\limits_{k \ne
+            i} {\exp{-(||L x_i - L x_k||^2)}}} , \quad p_{i i} = 0
+
+
+Mahalanobis distance
+^^^^^^^^^^^^^^^^^^^^
+
+NCA can be seen as learning a (squared) Mahalanobis distance metric:
+
+.. math::
+
+    || L(x_i - x_j)||^2 = (x_i - x_j)^TM(x_i - x_j),
+
+where :math:`M = L^T L` is a symmetric positive semi-definite matrix of size
+``(n_features, n_features)``.
+
+
+Implementation
+--------------
+
+This implementation follows what is explained in the original paper. For the
+optimisation method, it currently uses scipy's l-bfgs-b with a full gradient
+computation at each iteration, to avoid to tune the learning rate and provide
+stable learning.
+
+See the examples below and the doc  string of
+:meth:`NeighborhoodComponentsAnalysis.fit` for further information.
+
+Complexity
+----------
+
+Training
+^^^^^^^^
+First, time complexity depends on the number of iterations done. Besides,
+currently the algorithm has to compute, for each sample, its contribution to
+the cost and the gradient. The dominating terms in this computation are
+the dot products between differences in the input space and differences in the
+embedded space, which has complexity ``n_features_out * n_features *
+n_samples``. Therefore time complexity is ``O[n_iterations * n_samples^2 *
+n_features * n_features_out]`` In addition, the biggest matrix in memory has
+size ``max(n_features * n_features_out, n_features * n_samples,
+n_features_out * n_samples)``.
+
+Transform
+^^^^^^^^^
+Here the ``transform`` operation returns :math:`LX^T`, therefore its time
+complexity equals ``n_features_out * n_features * n_samples_test``. There is no
+added space complexity in the operation.
+
+
+.. topic:: Examples:
+
+ * :ref:`sphx_glr_auto_examples_neighbors_plot_nca_classification.py`
+ * :ref:`sphx_glr_auto_examples_neighbors_plot_nca_dim_reduction.py`
+
+
+.. topic:: References:
+
+   * | `"Neighbourhood Components Analysis". Advances in Neural Information"
+       <http://www.cs.nyu.edu/~roweis/papers/ncanips.pdf>`_,
+     | J. Goldberger, G. Hinton, S. Roweis, R. Salakhutdinov, Advances in
+     | Neural Information Processing Systems, Vol. 17, May 2005, pp. 513-520.
+
+   * `Wikipedia entry on Neighborhood Components Analysis
+     <https://en.wikipedia.org/wiki/Neighbourhood_components_analysis>`_
 
 
 .. _lmnn:
