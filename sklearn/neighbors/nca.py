@@ -10,6 +10,9 @@ from __future__ import print_function
 import numpy as np
 import sys
 import time
+
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
 try:  # scipy.misc.logsumexp is deprecated in scipy 1.0.0
     from scipy.special import logsumexp
 except ImportError:
@@ -140,8 +143,8 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, n_features_out=None, init='pca', max_iter=50,
-                 tol=1e-5, callback=None, store_opt_result=False, verbose=0,
+    def __init__(self, n_features_out=None, init='pca', max_iter=500,
+                 tol=1e-14, callback=None, store_opt_result=False, verbose=0,
                  random_state=None):
 
         # Parameters
@@ -186,7 +189,7 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
         # (n_samples, n_samples)
 
         # Initialize the transformation
-        transformation = self._initialize(X_valid, init)
+        transformation, X_valid = self._initialize(X_valid, y_valid, init)
 
         # Create a dictionary of parameters to be passed to the optimizer
         disp = self.verbose - 2 if self.verbose > 1 else -1
@@ -342,7 +345,7 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
 
         return X_valid, y_valid, init
 
-    def _initialize(self, X, init):
+    def _initialize(self, X, y, init):
         """Initialize the transformation.
 
         Parameters
@@ -372,19 +375,18 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
                 transformation = self.random_state_.randn(n_features_out,
                                                           X.shape[1])
             elif init == 'pca':
-                pca = PCA(n_components=n_features_out,
-                          random_state=self.random_state_)
+                lda = LinearDiscriminantAnalysis(n_components=n_features_out)
                 t_pca = time.time()
                 if self.verbose:
                     print('Finding principal components... ', end='')
                     sys.stdout.flush()
 
-                pca.fit(X)
+                lda.fit(X, y)
                 if self.verbose:
                     print('done in {:5.2f}s'.format(time.time() - t_pca))
 
-                transformation = pca.components_
-        return transformation
+                transformation = lda.scalings_.T[:n_features_out]
+        return transformation, X
 
     def _callback(self, transformation):
         """Called after each iteration of the optimizer.

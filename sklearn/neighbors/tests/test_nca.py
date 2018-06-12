@@ -74,7 +74,7 @@ def test_finite_differences():
     mask = y[:, np.newaxis] == y[np.newaxis, :]  # (n_samples, n_samples)
     nca.n_iter_ = 0
 
-    point = nca._initialize(X, init)
+    point = nca._initialize(X, y, init)
     # compute the gradient at `point`
     _, gradient = nca._loss_grad_lbfgs(point, X, mask)
 

@@ -42,11 +42,11 @@ from sklearn.preprocessing import StandardScaler
 
 print(__doc__)
 
-n_neighbors = 3
+n_neighbors = 1
 random_state = 0
 
 # Load Digits dataset
-digits = datasets.load_digits()
+digits = datasets.fetch_olivetti_faces()
 X, y = digits.data, digits.target
 
 # Split into train/test
@@ -65,16 +65,19 @@ pca = make_pipeline(StandardScaler(),
 lda = make_pipeline(StandardScaler(),
                     LinearDiscriminantAnalysis(n_components=2))
 
-# Reduce dimension to 2 with NeighborhoodComponentAnalysis
 nca = make_pipeline(StandardScaler(),
                     NeighborhoodComponentsAnalysis(n_features_out=2,
-                                                   random_state=random_state))
+                                                   random_state=random_state,
+                                                   tol=1e-5,
+                                                   max_iter=50,
+                                                   store_opt_result=True))
 
 # Use a nearest neighbor classifier to evaluate the methods
 knn = KNeighborsClassifier(n_neighbors=n_neighbors)
 
 # Make a list of the methods to be compared
-dim_reduction_methods = [('PCA', pca), ('LDA', lda), ('NCA', nca)]
+dim_reduction_methods = [('PCA', pca), ('LDA', lda),
+                         ('NCA', nca)]
 
 # plt.figure()
 for i, (name, model) in enumerate(dim_reduction_methods):
@@ -98,4 +101,8 @@ for i, (name, model) in enumerate(dim_reduction_methods):
     plt.title("{}, KNN (k={})\nTest accuracy = {:.2f}".format(name,
                                                               n_neighbors,
                                                               acc_knn))
+
+print(nca.named_steps['neighborhoodcomponentsanalysis'].opt_result_)
+
 plt.show()
+
