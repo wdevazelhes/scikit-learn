@@ -17,7 +17,12 @@ try:  # scipy.misc.logsumexp is deprecated in scipy 1.0.0
     from scipy.special import logsumexp
 except ImportError:
     from scipy.misc import logsumexp
+from functools import partial
+
+from scipy.spatial.distance import pdist
 from scipy.optimize import minimize
+
+from sklearn.metrics import pairwise_distances
 from ..metrics import pairwise_distances
 from ..base import BaseEstimator, TransformerMixin
 from ..preprocessing import LabelEncoder
@@ -26,6 +31,7 @@ from ..utils.multiclass import check_classification_targets
 from ..utils.random import check_random_state
 from ..utils.validation import check_is_fitted, check_array, check_X_y
 from ..externals.six import integer_types
+from ..metrics import pairwise_distances_chunked
 
 
 class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
@@ -143,8 +149,8 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, n_features_out=None, init='pca', max_iter=500,
-                 tol=1e-14, callback=None, store_opt_result=False, verbose=0,
+    def __init__(self, n_features_out=None, init='pca', max_iter=50,
+                 tol=1e-5, callback=None, store_opt_result=False, verbose=0,
                  random_state=None):
 
         # Parameters
