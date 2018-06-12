@@ -15,6 +15,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.sparse import csr_matrix, csc_matrix, coo_matrix, spdiags
 
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from ..base import BaseEstimator, TransformerMixin
 from ..pipeline import Pipeline
 from ..neighbors import NearestNeighbors, KNeighborsClassifier
@@ -258,7 +259,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
         t_train = time.time()
 
         # Initialize the linear transformation
-        transformation = self._initialize(X_valid, init)
+        transformation = self._initialize(X_valid, y_valid, init)
 
         # Find the target neighbors
         target_neighbors = self._select_target_neighbors(X_valid, y_valid)
@@ -500,7 +501,7 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
 
         return X, y_inverse, init
 
-    def _initialize(self, X, init):
+    def _initialize(self, X, y, init):
         """
 
         Parameters
@@ -526,21 +527,17 @@ class LargeMarginNearestNeighbor(BaseEstimator, TransformerMixin):
             pass
 
         elif init == 'pca':
-            pca = PCA(n_components=self.n_features_out,
-                      random_state=self.random_state_)
+            lda = LinearDiscriminantAnalysis(n_components=self.n_features_out)
             t_pca = time.time()
             if self.verbose:
-                print('[{}] Finding principal components...'.format(
-                    self.__class__.__name__))
+                print('Finding principal components... ', end='')
                 sys.stdout.flush()
 
-            pca.fit(X)
+            lda.fit(X, y)
             if self.verbose:
-                t_pca = time.time() - t_pca
-                print('[{}] Found principal components in {:5.2f}s.'.format(
-                    self.__class__.__name__, t_pca))
+                print('done in {:5.2f}s'.format(time.time() - t_pca))
 
-            transformation = pca.components_
+            transformation = lda.scalings_.T[:self.n_features_out]
 
         elif init == 'identity':
             if self.n_features_out is None:
