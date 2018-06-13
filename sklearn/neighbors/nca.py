@@ -11,13 +11,14 @@ import numpy as np
 import sys
 import time
 from functools import partial
-
-from scipy.spatial.distance import pdist
-from scipy.special import logsumexp
+try:  # scipy.misc.logsumexp is deprecated in scipy 1.0.0
+    from scipy.special import logsumexp
+except ImportError:
+    from scipy.misc import logsumexp
 from scipy.optimize import minimize
 
 from sklearn.metrics import pairwise_distances
-from ..preprocessing import OneHotEncoder
+from ..metrics import pairwise_distances
 from ..base import BaseEstimator, TransformerMixin
 from ..preprocessing import LabelEncoder
 from ..decomposition import PCA
@@ -184,10 +185,9 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
         # Measure the total training time
         t_train = time.time()
 
-        # Compute arrays that stay fixed during optimization:
-        # mask for fast lookup of same-class samples
-        masks = OneHotEncoder(sparse=False,
-                              dtype=bool).fit_transform(y_valid[:, np.newaxis])
+        # Compute mask that stays fixed during optimization:
+        mask = y_valid[:, np.newaxis] == y_valid[np.newaxis, :]
+        # (n_samples, n_samples)
 
         # Initialize the transformation
         transformation = self._initialize(X_valid, init)
@@ -196,7 +196,7 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
         disp = self.verbose - 2 if self.verbose > 1 else -1
         optimizer_params = {'method': 'L-BFGS-B',
                             'fun': self._loss_grad_lbfgs,
-                            'args': (X_valid, y_valid, -1.0),
+                            'args': (X_valid, mask, -1.0),
                             'jac': True,
                             'x0': transformation,
                             'tol': self.tol,
@@ -403,16 +403,7 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
 
         self.n_iter_ += 1
 
-    @staticmethod
-    def p_i_chunked(chunk, start, mask=None):  # todo: change None
-        stop = start + chunk.shape[0]
-        np.fill_diagonal(chunk, np.inf)
-        chunk = np.exp(- chunk - logsumexp(- chunk))
-        sum_similar = np.sum(chunk[mask[start:stop]])
-        sum_dissimilar = np.sum(chunk[~mask[start:stop]])
-        return sum_similar / (sum_similar + sum_dissimilar)
-
-    def _loss_grad_lbfgs(self, transformation, X, y, sign=1.0):
+    def _loss_grad_lbfgs(self, transformation, X, mask, sign=1.0):
         """Compute the loss and the loss gradient w.r.t. ``transformation``.
 
         Parameters
@@ -424,9 +415,9 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
         X : array, shape (n_samples, n_features)
             The training samples.
 
-        y : array, shape (n_samples,)
-            The corresponding training labels.
-
+        mask : array, shape (n_samples, n_samples)
+            A mask where ``mask[i, j] == 1`` if ``X[i]`` and ``X[j]`` belong
+            to the same class, and ``0`` otherwise.
 
         Returns
         -------
@@ -451,23 +442,25 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
         t_funcall = time.time()
 
         transformation = transformation.reshape(-1, X.shape[1])
-        X_embedded = np.dot(X, transformation.T)
+        X_embedded = np.dot(X, transformation.T)  # (n_samples, n_features_out)
 
-
-        mask = y[:, np.newaxis] == y[np.newaxis, :]  # (n_samples, n_samples)
+        # Compute softmax distances
         p_ij = pairwise_distances(X_embedded, squared=True)
         np.fill_diagonal(p_ij, np.inf)
-        p_ij = np.exp(-p_ij - logsumexp(-p_ij, axis=1, keepdims=True))
+        p_ij = np.exp(-p_ij - logsumexp(-p_ij, axis=1)[:, np.newaxis])
         # (n_samples, n_samples)
 
+        # Compute loss
         masked_p_ij = p_ij * mask
         p = np.sum(masked_p_ij, axis=1, keepdims=True)  # (n_samples, 1)
         loss = np.sum(p)
 
+        # Compute gradient of loss w.r.t. `transform`
         weighted_p_ij = masked_p_ij - p_ij * p
-        cross_term = X_embedded.T.dot(weighted_p_ij + weighted_p_ij.T)
-        X_embedded_weighted= X_embedded.T * np.sum(weighted_p_ij, axis=0)
-        gradient = 2 * (cross_term - X_embedded_weighted).dot(X)
+        gradient = 2 * (X_embedded.T.dot(weighted_p_ij + weighted_p_ij.T) -
+                        X_embedded.T * np.sum(weighted_p_ij, axis=0)).dot(X)
+        # time complexity: O(n_features_out x n_samples x
+        # min(n_samples, n_features))
 
         if self.verbose:
             t_funcall = time.time() - t_funcall
@@ -477,6 +470,7 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
             sys.stdout.flush()
 
         return sign * loss, sign * gradient.ravel()
+
 
 ##########################
 # Some helper functions #
