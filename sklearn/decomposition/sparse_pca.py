@@ -157,7 +157,7 @@ class SparsePCA(BaseEstimator, TransformerMixin):
             Returns the instance itself.
         """
         random_state = check_random_state(self.random_state)
-        X = check_array(X)
+        X = check_array(X, accept_sparse=True)
 
         if self.normalize_components:
             self.mean_ = X.mean(axis=0)

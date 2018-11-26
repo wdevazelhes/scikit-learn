@@ -11,6 +11,7 @@ import itertools
 from math import ceil
 
 import numpy as np
+import scipy
 from scipy import linalg
 
 from ..base import BaseEstimator, TransformerMixin
@@ -280,7 +281,7 @@ def sparse_encode(X, dictionary, gram=None, cov=None, algorithm='lasso_lars',
             X = check_array(X, order='C', dtype='float64')
         else:
             dictionary = check_array(dictionary)
-            X = check_array(X)
+            X = check_array(X, accept_sparse=True)
 
     n_samples, n_features = X.shape
     n_components = dictionary.shape[0]
@@ -534,7 +535,7 @@ def dict_learning(X, n_components, alpha, max_iter=100, tol=1e-8,
         # Don't copy V, it will happen below
         dictionary = dict_init
     else:
-        code, S, dictionary = linalg.svd(X, full_matrices=False)
+        code, S, dictionary = scipy.sparse.linalg.svds(X)
         dictionary = S[:, np.newaxis] * dictionary
     r = len(dictionary)
     if n_components <= r:  # True even if n_components=None
