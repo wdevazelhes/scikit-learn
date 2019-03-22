@@ -22,6 +22,7 @@ from ..utils import (check_array, check_random_state, gen_even_slices,
 from ..utils.extmath import randomized_svd, row_norms
 from ..utils.validation import check_is_fitted
 from ..linear_model import Lasso, orthogonal_mp_gram, LassoLars, Lars
+from sklearn.utils import shuffle as suffle
 
 
 def _sparse_encode(X, dictionary, gram, cov=None, algorithm='lasso_lars',
@@ -382,8 +383,7 @@ def _update_dict(dictionary, Y, code, verbose=False, return_r2=False,
     # Residuals, computed with BLAS for speed and efficiency
     # R <- -1.0 * U * V^T + 1.0 * Y
     # Outputs R as Fortran array for efficiency
-    R = - dictionary.dot(code)
-    R += Y
+    R = Y - dictionary.dot(code)
     R = np.asfortranarray(R)
     for k in range(n_components):
         # R <- 1.0 * U_k * V_k^T + R
@@ -760,7 +760,7 @@ def dict_learning_online(X, n_components=2, alpha=1, n_iter=100,
 
     if shuffle:
         X_train = X.copy()
-        random_state.shuffle(X_train)
+        X_train = suffle(X_train)
     else:
         X_train = X
 
@@ -768,7 +768,8 @@ def dict_learning_online(X, n_components=2, alpha=1, n_iter=100,
                              copy=False)
     dictionary = np.require(dictionary, requirements='W')
 
-    X_train = check_array(X_train, order='C', dtype=np.float64, copy=False)
+    X_train = check_array(X_train, order='C', dtype=np.float64, copy=False,
+                          accept_sparse=True, accept_large_sparse=True)
 
     batches = gen_batches(n_samples, batch_size)
     batches = itertools.cycle(batches)
@@ -811,7 +812,7 @@ def dict_learning_online(X, n_components=2, alpha=1, n_iter=100,
         A *= beta
         A += np.dot(this_code, this_code.T)
         B *= beta
-        B += np.dot(this_X.T, this_code.T)
+        B += this_X.T.dot(this_code.T)
 
         # Update dictionary
         dictionary = _update_dict(dictionary, B, A, verbose=verbose,
@@ -1368,7 +1369,7 @@ class MiniBatchDictionaryLearning(BaseEstimator, SparseCodingMixin):
             Returns the instance itself.
         """
         random_state = check_random_state(self.random_state)
-        X = check_array(X)
+        X = check_array(X, accept_sparse=True, accept_large_sparse=True)
 
         U, (A, B), self.n_iter_ = dict_learning_online(
             X, self.n_components, self.alpha,
