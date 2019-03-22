@@ -122,7 +122,7 @@ def _preprocess_data(X, y, fit_intercept, normalize=False, copy=True,
         else:
             X = X.copy(order='K')
 
-    y = np.asarray(y, dtype=X.dtype)
+    # y = np.asarray(y, dtype=X.dtype)
 
     if fit_intercept:
         if sp.issparse(X):

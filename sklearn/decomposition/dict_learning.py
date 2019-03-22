@@ -291,7 +291,7 @@ def sparse_encode(X, dictionary, gram=None, cov=None, algorithm='lasso_lars',
 
     if cov is None and algorithm != 'lasso_cd':
         copy_cov = False
-        cov = np.dot(dictionary, X.T)
+        cov = X.dot(dictionary.T).T
 
     if algorithm in ('lars', 'omp'):
         regularization = n_nonzero_coefs
@@ -377,13 +377,14 @@ def _update_dict(dictionary, Y, code, verbose=False, return_r2=False,
     n_features = Y.shape[0]
     random_state = check_random_state(random_state)
     # Get BLAS functions
-    gemm, = linalg.get_blas_funcs(('gemm',), (dictionary, code, Y))
     ger, = linalg.get_blas_funcs(('ger',), (dictionary, code))
     nrm2, = linalg.get_blas_funcs(('nrm2',), (dictionary,))
     # Residuals, computed with BLAS for speed and efficiency
     # R <- -1.0 * U * V^T + 1.0 * Y
     # Outputs R as Fortran array for efficiency
-    R = gemm(-1.0, dictionary, code, 1.0, Y)
+    R = - dictionary.dot(code)
+    R += Y
+    R = np.asfortranarray(R)
     for k in range(n_components):
         # R <- 1.0 * U_k * V_k^T + R
         R = ger(1.0, dictionary[:, k], code[k, :], a=R, overwrite_a=True)
@@ -1177,7 +1178,7 @@ class DictionaryLearning(BaseEstimator, SparseCodingMixin):
             Returns the object itself
         """
         random_state = check_random_state(self.random_state)
-        X = check_array(X)
+        X = check_array(X, accept_sparse=True)
         if self.n_components is None:
             n_components = X.shape[1]
         else:

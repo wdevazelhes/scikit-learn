@@ -462,7 +462,7 @@ def lars_path(X, y, Xy=None, Gram=None, max_iter=500,
                 # wrong as Xy is not swapped with the rest of variables
 
                 # TODO: this could be updated
-                residual = y - np.dot(X, coef)
+                residual = np.asarray((y.T - np.dot(X, coef))).ravel()
                 temp = np.dot(X.T[drop_idx], residual)
                 Cov = np.r_[temp, Cov]
 
