@@ -277,7 +277,7 @@ def sparse_encode(X, dictionary, gram=None, cov=None, algorithm='lasso_lars',
     if check_input:
         if algorithm == 'lasso_cd':
             dictionary = check_array(dictionary, order='C', dtype='float64')
-            X = check_array(X, order='C', dtype='float64')
+            X = check_array(X, order='C', dtype='float64', accept_sparse=True)
         else:
             dictionary = check_array(dictionary)
             X = check_array(X, accept_sparse=True)
