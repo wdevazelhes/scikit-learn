@@ -960,7 +960,8 @@ class Lars(LinearModel, RegressorMixin, MultiOutputMixin):
         self : object
             returns an instance of self.
         """
-        X, y = check_X_y(X, y, y_numeric=True, multi_output=True)
+        X, y = check_X_y(X, y, y_numeric=True, multi_output=True, 
+                         accept_large_sparse=True, accept_sparse=True)  # allow sparse ? 
 
         alpha = getattr(self, 'alpha', 0.)
         if hasattr(self, 'n_nonzero_coefs'):

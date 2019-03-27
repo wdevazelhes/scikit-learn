@@ -120,7 +120,7 @@ def _sparse_encode(X, dictionary, gram, cov=None, algorithm='lasso_lars',
                                    verbose=verbose, normalize=False,
                                    precompute=gram, fit_path=False,
                                    positive=positive)
-            lasso_lars.fit(dictionary.T, X.T, Xy=cov)
+            lasso_lars.fit(dictionary.T, X.T, Xy=cov)  # I think cov should be sparse too
             new_code = lasso_lars.coef_
         finally:
             np.seterr(**err_mgt)
@@ -279,7 +279,7 @@ def sparse_encode(X, dictionary, gram=None, cov=None, algorithm='lasso_lars',
             dictionary = check_array(dictionary, order='C', dtype='float64')
             X = check_array(X, order='C', dtype='float64', accept_sparse=True)
         else:
-            dictionary = check_array(dictionary)
+            dictionary = check_array(dictionary)  # why is the dictionary not a sparse matrix here ? it's sparse
             X = check_array(X, accept_sparse=True)
 
     n_samples, n_features = X.shape
