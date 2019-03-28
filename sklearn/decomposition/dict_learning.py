@@ -534,7 +534,8 @@ def dict_learning(X, n_components, alpha, max_iter=100, tol=1e-8,
         # Don't copy V, it will happen below
         dictionary = dict_init
     else:
-        code, S, dictionary = scipy.sparse.linalg.svds(X)
+        # code, S, dictionary = scipy.linalg.svd(X, full_matrices=False)
+        code, S, dictionary = scipy.sparse.linalg.svds(X, k=n_components)
         dictionary = S[:, np.newaxis] * dictionary
     r = len(dictionary)
     if n_components <= r:  # True even if n_components=None
