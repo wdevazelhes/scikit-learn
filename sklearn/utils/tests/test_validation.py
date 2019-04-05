@@ -10,7 +10,6 @@ import pytest
 from pytest import importorskip
 import numpy as np
 import scipy.sparse as sp
-from scipy import __version__ as scipy_version
 
 from sklearn.utils.testing import assert_equal
 from sklearn.utils.testing import assert_raises
@@ -40,9 +39,8 @@ from sklearn.utils.validation import (
     assert_all_finite,
     check_memory,
     check_non_negative,
-    LARGE_SPARSE_SUPPORTED,
-    _num_samples
-)
+    _num_samples,
+    check_scalar)
 import sklearn
 
 from sklearn.exceptions import NotFittedError
@@ -459,29 +457,17 @@ def X_64bit(request):
 
 def test_check_array_accept_large_sparse_no_exception(X_64bit):
     # When large sparse are allowed
-    if LARGE_SPARSE_SUPPORTED:
-        check_array(X_64bit, accept_large_sparse=True, accept_sparse=True)
+    check_array(X_64bit, accept_large_sparse=True, accept_sparse=True)
 
 
 def test_check_array_accept_large_sparse_raise_exception(X_64bit):
     # When large sparse are not allowed
-    if LARGE_SPARSE_SUPPORTED:
-        msg = ("Only sparse matrices with 32-bit integer indices "
-               "are accepted. Got int64 indices.")
-        assert_raise_message(ValueError, msg,
-                             check_array, X_64bit,
-                             accept_sparse=True,
-                             accept_large_sparse=False)
-
-
-def test_check_array_large_indices_non_supported_scipy_version(X_64bit):
-    # Large indices should not be allowed for scipy<0.14.0
-    if not LARGE_SPARSE_SUPPORTED:
-        msg = ("Scipy version %s does not support large"
-               " indices, please upgrade your scipy"
-               " to 0.14.0 or above" % scipy_version)
-        assert_raise_message(ValueError, msg, check_array,
-                             X_64bit, accept_sparse='csc')
+    msg = ("Only sparse matrices with 32-bit integer indices "
+           "are accepted. Got int64 indices.")
+    assert_raise_message(ValueError, msg,
+                         check_array, X_64bit,
+                         accept_sparse=True,
+                         accept_large_sparse=False)
 
 
 def test_check_array_min_samples_and_features_messages():
@@ -739,12 +725,12 @@ def test_check_dataframe_warns_on_dtype():
                        dtype='numeric', warn_on_dtype=True)
 
 
-class DummyMemory(object):
+class DummyMemory:
     def cache(self, func):
         return func
 
 
-class WrongDummyMemory(object):
+class WrongDummyMemory:
     pass
 
 
@@ -811,3 +797,34 @@ def test_retrieve_samples_from_non_standard_shape():
 
     X = TestNonNumericShape()
     assert _num_samples(X) == len(X)
+
+
+@pytest.mark.parametrize('x, target_type, min_val, max_val',
+                         [(3, int, 2, 5),
+                          (2.5, float, 2, 5)])
+def test_check_scalar_valid(x, target_type, min_val, max_val):
+    """Test that check_scalar returns no error/warning if valid inputs are
+    provided"""
+    with pytest.warns(None) as record:
+        check_scalar(x, "test_name", target_type, min_val, max_val)
+    assert len(record) == 0
+
+
+@pytest.mark.parametrize('x, target_name, target_type, min_val, max_val, '
+                         'err_msg',
+                         [(1, "test_name1", float, 2, 4,
+                           TypeError("`test_name1` must be an instance of "
+                                     "<class 'float'>, not <class 'int'>.")),
+                          (1, "test_name2", int, 2, 4,
+                           ValueError('`test_name2`= 1, must be >= 2.')),
+                          (5, "test_name3", int, 2, 4,
+                           ValueError('`test_name3`= 5, must be <= 4.'))])
+def test_check_scalar_invalid(x, target_name, target_type, min_val, max_val,
+                              err_msg):
+    """Test that check_scalar returns the right error if a wrong input is
+    given"""
+    with pytest.raises(Exception) as raised_error:
+        check_scalar(x, target_name, target_type=target_type,
+                     min_val=min_val, max_val=max_val)
+    assert str(raised_error.value) == str(err_msg)
+    assert type(raised_error.value) == type(err_msg)
